@@ -1,35 +1,35 @@
 import { useState, useEffect } from 'react';
-import { getStudents, deleteStudent } from '../../api/studentApi';
-import { StudentRead } from '../../types/student';
+import { getInstructors, deleteInstructor } from '../../api/instructorApi';
 import Swal from 'sweetalert2';
 import ProfileCard from '../../components/List/List';
-import AddStudentModal from '../../components/User/AddStudentModal';  // Import the modal component
+import AddInstructorModal from '../../components/Instructor/AddInstructorModal';
+import { InstructorRead } from '../../types/instructor';
 
-const StudentList = () => {
-    const [students, setStudents] = useState<StudentRead[]>([]);
+const InstructorList = () => {
+    const [instructors, setInstructors] = useState<InstructorRead[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);  // State to control modal visibility
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
     useEffect(() => {
-        loadStudents();
+        loadInstructors();
     }, []);
 
-    const loadStudents = async () => {
+    const loadInstructors = async () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await getStudents();
-            setStudents(data);
+            const data = await getInstructors();
+            setInstructors(data);
         } catch (err) {
-            setError('Failed to load students');
+            setError('Failed to load instructors');
             console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (studentId: number) => {
+    const handleDelete = async (instructorId: number) => {
         const result = await Swal.fire({
             title: 'Are you sure?',
             text: "You won't be able to revert this!",
@@ -43,20 +43,20 @@ const StudentList = () => {
 
         if (result.isConfirmed) {
             try {
-                await deleteStudent(studentId);
+                await deleteInstructor(instructorId);
                 await Swal.fire({
                     title: 'Deleted!',
-                    text: 'Student data has been deleted.',
+                    text: 'Instructor data has been deleted.',
                     icon: 'success',
                     confirmButtonColor: '#4CAF50'
                 });
-                loadStudents();
+                loadInstructors();
             } catch (err) {
-                setError('Failed to delete student');
+                setError('Failed to delete instructor');
                 console.error(err);
                 await Swal.fire({
                     title: 'Error!',
-                    text: 'Failed to delete student.',
+                    text: 'Failed to delete instructor.',
                     icon: 'error',
                     confirmButtonColor: '#d33'
                 });
@@ -64,13 +64,13 @@ const StudentList = () => {
         }
     };
 
-    // Helper function to convert student.is_approved to a status string
-    const getStatusText = (isApproved: boolean): 'Approved' | 'Pending' => {
-        return isApproved ? 'Approved' : 'Pending';
+    // Helper function to convert instructor.is_active to a status string
+    const getStatusText = (isActive: boolean): 'Active' | 'Inactive' => {
+        return isActive ? 'Active' : 'Inactive';
     };
 
     if (loading) {
-        return <div className="p-4">Loading students...</div>;
+        return <div className="p-4">Loading instructors...</div>;
     }
 
     if (error) {
@@ -80,36 +80,36 @@ const StudentList = () => {
     return (
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Students</h2>
+                <h2 className="text-2xl font-bold">Instructors</h2>
                 <button
-                    onClick={() => setIsModalOpen(true)}  // Open modal instead of redirecting
+                    onClick={() => setIsModalOpen(true)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
                 >
-                    Add New Student
+                    Add New Instructor
                 </button>
             </div>
 
-            {/* Add Student Modal */}
-            <AddStudentModal
+            {/* Add Instructor Modal */}
+            <AddInstructorModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={loadStudents} 
+                onSuccess={loadInstructors}
             />
 
-            {students.length === 0 ? (
-                <p>No students found.</p>
+            {instructors.length === 0 ? (
+                <p>No instructors found.</p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {students.map((student) => (
+                    {instructors.map((instructor) => (
                         <ProfileCard
-                            key={student.student_id}
-                            id={student.student_id}
-                            name={student.full_name}
-                            email={student.username}
-                            description={`${student.major_name} - Year ${student.year}`}
-                            status={getStatusText(student.is_approved)}
-                            onDelete={() => handleDelete(student.student_id)}
-                            type='student'
+                            key={instructor.instructor_id}
+                            id={instructor.instructor_id}
+                            name={instructor.full_name}
+                            email={instructor.email}
+                            description={`NIDN: ${instructor.nidn}`}
+                            status={getStatusText(instructor.is_active)}
+                            onDelete={() => handleDelete(instructor.instructor_id)}
+                            type='instructor'
                         />
                     ))}
                 </div>
@@ -118,4 +118,4 @@ const StudentList = () => {
     );
 };
 
-export default StudentList;
+export default InstructorList;

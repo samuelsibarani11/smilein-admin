@@ -1,125 +1,150 @@
-import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { StudentRead, StudentUpdate } from '../../types/student';
+import About from '../../components/User/About';
+import Notification from '../../components/User/Notification';
+import Dataset from '../../components/User/Dataset';
+import Schedule from '../../components/User/Schedule';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getStudent, getNextStudent, updateStudent } from '../../api/studentApi';
+import Swal from 'sweetalert2';
+import UpdateStudentModal from '../../components/User/UpdateStudentModal';
 
-const StudentDetail = () => {
-    const { state } = useLocation();
-    const [activeTab, setActiveTab] = useState('About');
+const StudentDetail: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    const [studentData, setStudentData] = useState<StudentRead | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<string>('About');
+    const [isNavigating, setIsNavigating] = useState<boolean>(false);
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
 
-    const tabs = [
+    const tabs: string[] = [
         'About',
-        'Lectures',
-        'Notification'
+        'Schedule',
+        'Notification',
+        'Dataset'
     ];
+
+    useEffect(() => {
+        const fetchStudentDetails = async () => {
+            try {
+                if (id) {
+                    const student = await getStudent(parseInt(id, 10));
+                    setStudentData(student);
+                }
+            } catch (err) {
+                console.error('Failed to fetch student details', err);
+                setError('Failed to load student details');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStudentDetails();
+    }, [id]);
+
+    const handleNextStudent = async () => {
+        // If currently loading or navigating, don't do anything
+        if (loading || isNavigating || !studentData?.student_id) return;
+
+        try {
+            setIsNavigating(true);
+
+            // Call API to get the next student
+            const nextStudent = await getNextStudent(studentData.student_id);
+
+            // Navigate to the next student's page
+            navigate(`/student/student-list/${nextStudent.student_id}`);
+
+            // If next student is the same as current (only one data in database)
+            if (nextStudent.student_id === studentData.student_id) {
+                Swal.fire({
+                    title: 'Info',
+                    text: 'Hanya ada satu student dalam database',
+                    icon: 'info',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        } catch (err) {
+            console.error('Failed to navigate to next student', err);
+
+            // Show error message with SweetAlert2
+            Swal.fire({
+                title: 'Error!',
+                text: 'Gagal mendapatkan data student berikutnya',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#d33'
+            });
+        } finally {
+            setIsNavigating(false);
+        }
+    };
+
+    const handleUpdateStudent = async (studentId: number, updateData: StudentUpdate) => {
+        try {
+            // Validate data before sending
+            const validatedData = validateStudentUpdate(updateData);
+
+            const updatedStudent = await updateStudent(studentId, validatedData);
+            setStudentData(updatedStudent);
+            setIsUpdateModalOpen(false);
+
+            // Show SweetAlert2 success notification
+            Swal.fire({
+                title: 'Success!',
+                text: 'Data mahasiswa berhasil diperbarui',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true
+            });
+        } catch (error: any) {
+            console.error('Failed to update student:', error);
+
+            // Show SweetAlert2 error notification
+            Swal.fire({
+                title: 'Error!',
+                text: error.message || 'Gagal memperbarui data mahasiswa',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#d33'
+            });
+        }
+    };
+
+    // Validation helper function
+    function validateStudentUpdate(data: StudentUpdate): StudentUpdate {
+        // Make sure we have at least one field to update
+        if (Object.keys(data).length === 0) {
+            throw new Error('No update data provided');
+        }
+
+        // Only validate fields that are present
+        if (data.username === '') {
+            throw new Error('Username cannot be empty');
+        }
+
+        if (data.full_name === '') {
+            throw new Error('Full name cannot be empty');
+        }
+
+        return data;
+    }
 
     const renderTabContent = () => {
         switch (activeTab) {
             case 'About':
-                return (
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                        <div className="border dark:border-gray-700 rounded-lg p-4 md:p-6 dark:bg-gray-800">
-                            <h2 className="text-lg font-semibold mb-4 dark:text-white">Personal Information</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Username</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.username || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Date of Birth</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.dob || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Gender</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.gender || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Address</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.address || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Country</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.country || 'None'}</p>
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <div className="border dark:border-gray-700 rounded-lg p-4 md:p-6 dark:bg-gray-800">
-                            <h2 className="text-lg font-semibold mb-4 dark:text-white">Academic Information</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Major</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.major || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Batch</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.batch || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Student ID</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.studentId || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Semester</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.semester || 'None'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-500 dark:text-gray-400">Academic Advisor</label>
-                                    <p className="mt-1 dark:text-gray-300">{state?.academicAdvisor || 'None'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'Lectures':
-                return (
-                    <div className="mt-6 p-4 md:p-6 border dark:border-gray-700 rounded-lg dark:bg-gray-800">
-                        <h2 className="text-lg font-semibold mb-4 dark:text-white">Lectures Information</h2>
-                        <div className="mb-6">
-                            <label className="text-sm text-gray-500 dark:text-gray-400">Academic Year</label>
-                            <div className="mt-2 flex gap-4">
-                                <select className="p-2 border rounded dark:bg-gray-700 dark:text-gray-300">
-                                    <option>2024/2025</option>
-                                </select>
-                                <select className="p-2 border rounded dark:bg-gray-700 dark:text-gray-300">
-                                    <option>Gasal</option>
-                                </select>
-                                <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                    Search
-                                </button>
-                            </div>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-700">
-                                <thead className="bg-gray-100 dark:bg-gray-700">
-                                    <tr>
-                                        <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">#</th>
-                                        <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Course Code</th>
-                                        <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Course</th>
-                                        <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Credit (SKS)</th>
-                                        <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Attendance (%)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">1</td>
-                                        <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">4233101</td>
-                                        <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">Magang</td>
-                                        <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">20</td>
-                                        <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">0.00</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                );
-
+                return <About studentData={studentData} />;
+            case 'Schedule':
+                return <Schedule studentData={studentData} />;
             case 'Notification':
-                return (
-                    <div className="mt-6 p-4 md:p-6 border dark:border-gray-700 rounded-lg dark:bg-gray-800">
-                        <h2 className="text-lg font-semibold mb-4 dark:text-white">Notification</h2>
-                        <p className="text-gray-600 dark:text-gray-400">Notification responses will be displayed here.</p>
-                    </div>
-                );
+                return <Notification />;
+            case 'Dataset':
+                return <Dataset studentData={studentData} />;
             default:
                 return (
                     <div className="mt-6 p-4 md:p-6 border dark:border-gray-700 rounded-lg dark:bg-gray-800">
@@ -130,33 +155,61 @@ const StudentDetail = () => {
         }
     };
 
+    const getInitials = (name?: string): string => {
+        if (!name) return '';
+        return name.split(' ').map(n => n[0]).join('');
+    };
+
+    if (loading) {
+        return <div className="p-4">Loading student details...</div>;
+    }
+
+    if (error) {
+        return <div className="p-4 text-red-500">{error}</div>;
+    }
+
     return (
         <div className="p-4 md:p-6 bg-white dark:bg-gray-900">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6 mb-6 md:mb-8">
                 <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-lg flex items-center justify-center">
                     <span className="text-xl md:text-2xl text-white">
-                        {state?.name?.split(' ').map((n: string) => n[0]).join('')}
+                        {getInitials(studentData?.full_name)}
                     </span>
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-xl md:text-2xl font-semibold dark:text-white truncate">{state?.name}</h1>
-                            <p className="text-gray-600 dark:text-gray-400">{state?.position || 'Student'}</p>
+                            <h1 className="text-xl md:text-2xl font-semibold dark:text-white truncate">{studentData?.full_name}</h1>
+                            <p className="text-gray-600 dark:text-gray-400">{studentData?.major_name || 'Student'}</p>
                         </div>
                         <div className="flex gap-2">
                             {/* Edit Icon */}
-                            <button className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <button
+                                onClick={() => setIsUpdateModalOpen(true)}
+                                className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
                                 <svg className="w-5 h-5 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
                             </button>
 
-                            {/* Next Icon (coming soon) */}
-                            <button className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <svg className="w-5 h-5 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
+                            {/* Next Icon */}
+                            <button
+                                onClick={handleNextStudent}
+                                className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                disabled={loading || isNavigating}
+                            >
+                                {isNavigating ? (
+                                    // Loading spinner when navigating
+                                    <svg className="w-5 h-5 dark:text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -165,13 +218,13 @@ const StudentDetail = () => {
                             <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-gray-600 dark:text-gray-400 truncate">{state?.email}</span>
+                            <span className="text-gray-600 dark:text-gray-400 truncate">{studentData?.username}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
-                            <span className="text-gray-600 dark:text-gray-400">{state?.phone || 'Not provided'}</span>
+                            <span className="text-gray-600 dark:text-gray-400">{studentData?.year || 'Not available'}</span>
                         </div>
                     </div>
                 </div>
@@ -195,6 +248,15 @@ const StudentDetail = () => {
             </div>
 
             {renderTabContent()}
+
+            {studentData && (
+                <UpdateStudentModal
+                    isOpen={isUpdateModalOpen}
+                    onClose={() => setIsUpdateModalOpen(false)}
+                    currentStudent={studentData}
+                    onUpdateStudent={handleUpdateStudent}
+                />
+            )}
         </div>
     );
 };

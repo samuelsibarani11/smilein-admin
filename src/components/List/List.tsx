@@ -5,10 +5,11 @@ interface ProfileCardProps {
   id: number;
   name: string;
   email: string;
-  description: string;
-  status?: 'Converted' | 'Hired' | 'Not-Hired' | 'Canceled';
+  description: any;
+  status?: 'Approved' | 'Pending' | 'Active' | 'Inactive';
   dob?: string;
   onDelete?: () => void;
+  type: 'student' | 'instructor'; // New prop to determine navigation
 }
 
 const ProfileCard: React.FC<ProfileCardProps> = ({
@@ -16,8 +17,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   name,
   email,
   description,
-  status = 'Converted',
-  dob,
+  status = 'Pending',
+  type, // Added type prop
   onDelete
 }) => {
   const navigate = useNavigate();
@@ -32,17 +33,24 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
 
   const getStatusColor = (status: ProfileCardProps['status']) => {
     const colors = {
-      'Converted': 'bg-blue-500',
-      'Hired': 'bg-green-500',
-      'Not-Hired': 'bg-gray-500',
-      'Canceled': 'bg-red-500'
+      'Approved': 'bg-blue-500',
+      'Pending': 'bg-green-500',
+      'Active': 'bg-green-500',
+      'Inactive': 'bg-green-500',
     };
-    return colors[status || 'Converted'];
+    return colors[status || 'Approved' || 'Active'];
   };
 
   const handleClick = () => {
-    navigate(`/student/student-list/${id}`, {
-      state: { name, email, description, status, dob }
+    // Dynamic navigation based on the type prop
+    const route = type === 'student'
+      ? `/student/student-list/${id}`
+      : `/instructor/instructor-list/${id}`;
+
+    navigate(route, {
+      state: {
+        [`${type}Id`]: id  // Dynamically set studentId or instructorId
+      }
     });
   };
 
@@ -67,7 +75,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             <h3 className="font-medium text-gray-900 dark:text-white">{name}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">{email}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
-
           </div>
           {onDelete && (
             <button

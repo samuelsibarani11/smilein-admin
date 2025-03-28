@@ -1,189 +1,141 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DynamicTable from '../../components/Tables/DynamicTable';
 import { Column } from '../../types/table';
+import * as scheduleApi from '../../api/scheduleApi';
+import { ScheduleRead, ScheduleCreate, ScheduleUpdate } from '../../types/schedule';
 import Swal from 'sweetalert2';
+import CreateScheduleModal from '../../components/Schedule/CreateScheduleModal';
+import UpdateScheduleModal from '../../components/Schedule/UpdateScheduleModal';
 
-interface Schedule {
-    id: number;
-    courseId: string;
-    courseName: string;
-    lecturer: string;
-    room: string;
-    day: string;
-    startTime: string;
-    endTime: string;
-    material: string;
-    academicYear: string;
-    semester: string;
-    department: string;
-    createdAt: string;
-}
+const DAYS_OF_WEEK = [
+    'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+];
 
-interface FilterState {
-    academicYear: string;
-    semester: string;
-    department: string;
-    lecturer: string;
-    room: string;
-}
+const Schedules: React.FC = () => {
+    const [schedules, setSchedules] = useState<ScheduleRead[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
-const Schedules = () => {
-    const [schedules, setSchedules] = useState<Schedule[]>([
-        {
-            id: 1,
-            courseId: 'CS101',
-            courseName: 'Algoritma dan Pemrograman',
-            lecturer: 'Dr. John Doe',
-            room: 'Lab Komputer 1',
-            day: 'Senin',
-            startTime: '08:00',
-            endTime: '10:30',
-            material: 'Pengenalan Algoritma',
-            academicYear: '2024/2025',
-            semester: 'Ganjil',
-            department: 'Teknik Informatika',
-            createdAt: '2024-01-01'
-        },
-    ]);
+    const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
+    const [updateModalOpen, setUpdateModalOpen] = useState<boolean>(false);
+    const [currentSchedule, setCurrentSchedule] = useState<ScheduleRead | null>(null);
 
-    const [filters, setFilters] = useState<FilterState>({
-        academicYear: '',
-        semester: '',
-        department: '',
-        lecturer: '',
-        room: ''
-    });
+    useEffect(() => {
+        fetchSchedules();
+    }, []);
 
-    const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
-
-    const checkScheduleConflict = (newSchedule: Partial<Schedule>, editId?: number): boolean => {
-        return schedules.some(schedule => {
-            if (editId && schedule.id === editId) return false;
-
-            if (schedule.day === newSchedule.day) {
-                const newStart = new Date(`2024-01-01T${newSchedule.startTime}`);
-                const newEnd = new Date(`2024-01-01T${newSchedule.endTime}`);
-                const existingStart = new Date(`2024-01-01T${schedule.startTime}`);
-                const existingEnd = new Date(`2024-01-01T${schedule.endTime}`);
-
-                return (
-                    (newStart >= existingStart && newStart < existingEnd) ||
-                    (newEnd > existingStart && newEnd <= existingEnd) ||
-                    (newStart <= existingStart && newEnd >= existingEnd)
-                );
-            }
-            return false;
-        });
-    };
-
-    const handleAddSchedule = async () => {
-        const { value: formValues } = await Swal.fire({
-            title: 'Tambah Jadwal Kuliah',
-            html: `
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Mata Kuliah</label>
-                        <input id="courseName" class="swal2-input" placeholder="Nama Mata Kuliah">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dosen</label>
-                        <input id="lecturer" class="swal2-input" placeholder="Nama Dosen">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ruangan</label>
-                        <input id="room" class="swal2-input" placeholder="Ruangan">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Hari</label>
-                        <select id="day" class="swal2-select">
-                            <option value="Senin">Senin</option>
-                            <option value="Selasa">Selasa</option>
-                            <option value="Rabu">Rabu</option>
-                            <option value="Kamis">Kamis</option>
-                            <option value="Jumat">Jumat</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Mulai</label>
-                        <input id="startTime" type="time" class="swal2-input">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Selesai</label>
-                        <input id="endTime" type="time" class="swal2-input">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Materi/Bab</label>
-                        <input id="material" class="swal2-input" placeholder="Materi Pembelajaran">
-                    </div>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Tambah',
-            cancelButtonText: 'Batal',
-            preConfirm: () => {
-                const values = {
-                    courseName: (document.getElementById('courseName') as HTMLInputElement).value,
-                    lecturer: (document.getElementById('lecturer') as HTMLInputElement).value,
-                    room: (document.getElementById('room') as HTMLInputElement).value,
-                    day: (document.getElementById('day') as HTMLSelectElement).value,
-                    startTime: (document.getElementById('startTime') as HTMLInputElement).value,
-                    endTime: (document.getElementById('endTime') as HTMLInputElement).value,
-                    material: (document.getElementById('material') as HTMLInputElement).value,
-                };
-
-                if (!values.courseName || !values.lecturer || !values.room || !values.startTime || !values.endTime) {
-                    Swal.showValidationMessage('Semua field harus diisi');
-                    return false;
-                }
-
-                if (checkScheduleConflict(values)) {
-                    Swal.showValidationMessage('Terdapat bentrok jadwal pada waktu yang dipilih');
-                    return false;
-                }
-
-                return values;
-            }
-        });
-
-        if (formValues) {
-            const newSchedule: Schedule = {
-                id: schedules.length + 1,
-                courseId: `CS${schedules.length + 101}`,
-                ...formValues,
-                academicYear: '2024/2025',
-                semester: 'Ganjil',
-                department: 'Teknik Informatika',
-                createdAt: new Date().toISOString()
-            };
-
-            setSchedules(prev => [...prev, newSchedule]);
-            await Swal.fire('Berhasil!', 'Jadwal baru telah ditambahkan.', 'success');
+    const fetchSchedules = async (): Promise<void> => {
+        try {
+            setLoading(true);
+            const data = await scheduleApi.getSchedules();
+            setSchedules(data);
+            setError(null);
+        } catch (err) {
+            console.error('Failed to fetch schedules:', err);
+            setError('Failed to load schedules. Please try again later.');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleExport = async (type: 'excel' | 'pdf') => {
-        await Swal.fire({
-            title: 'Ekspor Data',
-            text: `Data akan diekspor ke ${type.toUpperCase()}`,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonText: 'Ekspor',
-            cancelButtonText: 'Batal'
+    const showAlert = (title: string, message: string, icon: 'success' | 'error' | 'warning'): void => {
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: icon,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3B82F6',
+            customClass: {
+                container: 'font-sans'
+            }
         });
-        // Implement export logic here
+    };
+
+    const handleCreateSchedule = async (scheduleData: ScheduleCreate): Promise<void> => {
+        try {
+            const newSchedule = await scheduleApi.createSchedule(scheduleData);
+            setSchedules([...schedules, newSchedule]);
+            setCreateModalOpen(false);
+            showAlert('Berhasil!', 'Jadwal baru telah ditambahkan', 'success');
+        } catch (err) {
+            console.error('Failed to create schedule:', err);
+            throw err; // Rethrow to be caught by modal component
+        }
+    };
+
+    const handleUpdateSchedule = async (scheduleId: number, scheduleData: ScheduleUpdate): Promise<void> => {
+        try {
+            const updatedSchedule = await scheduleApi.updateSchedule(scheduleId, scheduleData);
+            setSchedules(schedules.map(s =>
+                s.schedule_id === scheduleId ? updatedSchedule : s
+            ));
+            setUpdateModalOpen(false);
+            showAlert('Berhasil!', 'Jadwal telah diperbarui', 'success');
+        } catch (err) {
+            console.error('Failed to update schedule:', err);
+            throw err; // Rethrow to be caught by modal component
+        }
+    };
+
+    const handleUpdateClick = (schedule: ScheduleRead): void => {
+        setCurrentSchedule(schedule);
+        setUpdateModalOpen(true);
+    };
+
+    const handleDeleteClick = (schedule: ScheduleRead): void => {
+        setCurrentSchedule(schedule);
+        Swal.fire({
+            title: 'Konfirmasi Penghapusan',
+            text: 'Apakah anda yakin ingin menghapus jadwal ini?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#9CA3AF',
+            confirmButtonText: 'Hapus',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                handleDeleteConfirm();
+            }
+        });
+    };
+
+    const handleDeleteConfirm = async (): Promise<void> => {
+        if (!currentSchedule) return;
+
+        try {
+            await scheduleApi.deleteSchedule(currentSchedule.schedule_id);
+            setSchedules(schedules.filter(s => s.schedule_id !== currentSchedule.schedule_id));
+            showAlert('Terhapus!', 'Jadwal telah dihapus.', 'success');
+        } catch (err) {
+            console.error('Failed to delete schedule:', err);
+            showAlert('Error!', 'Gagal menghapus jadwal.', 'error');
+        }
     };
 
     const scheduleColumns: Column[] = [
         {
-            header: 'Mata Kuliah',
-            accessor: 'courseName',
-            minWidth: '200px',
+            header: 'ID Jadwal',
+            accessor: 'schedule_id',
+            minWidth: '100px',
         },
         {
-            header: 'Dosen',
-            accessor: 'lecturer',
+            header: 'Mata Kuliah',
+            accessor: 'course.course_name',
+            minWidth: '200px',
+            cell: (item: ScheduleRead) => item.course?.course_name || 'N/A'
+        },
+        {
+            header: 'Hari',
+            accessor: 'day_of_week',
+            minWidth: '100px',
+            cell: (item: ScheduleRead) => DAYS_OF_WEEK[item.day_of_week]
+        },
+        {
+            header: 'Waktu',
+            accessor: 'time',
             minWidth: '150px',
+            cell: (item: ScheduleRead) => `${item.start_time} - ${item.end_time}`
         },
         {
             header: 'Ruangan',
@@ -191,142 +143,81 @@ const Schedules = () => {
             minWidth: '120px',
         },
         {
-            header: 'Hari',
-            accessor: 'day',
-            minWidth: '100px',
-        },
-        {
-            header: 'Waktu',
-            accessor: 'time',
+            header: 'Tanggal Dibuat',
+            accessor: 'created_at',
             minWidth: '150px',
-            cell: (item: Schedule) => (
-                <span>{`${item.startTime} - ${item.endTime}`}</span>
+            cell: (item: ScheduleRead) => (
+                <span>
+                    {new Date(item.created_at ?? '').toLocaleDateString('id-ID', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    })}
+                </span>
             ),
-        },
-        {
-            header: 'Materi/Bab',
-            accessor: 'material',
-            minWidth: '200px',
-        },
+        }
     ];
 
-    const renderFilters = () => (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-            <select
-                className="border rounded-md p-2"
-                value={filters.academicYear}
-                onChange={(e) => setFilters({ ...filters, academicYear: e.target.value })}
-            >
-                <option value="">Tahun Akademik</option>
-                <option value="2024/2025">2024/2025</option>
-                <option value="2023/2024">2023/2024</option>
-            </select>
-            <select
-                className="border rounded-md p-2"
-                value={filters.semester}
-                onChange={(e) => setFilters({ ...filters, semester: e.target.value })}
-            >
-                <option value="">Semester</option>
-                <option value="Ganjil">Ganjil</option>
-                <option value="Genap">Genap</option>
-            </select>
-            <select
-                className="border rounded-md p-2"
-                value={filters.department}
-                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-            >
-                <option value="">Program Studi</option>
-                <option value="Teknik Informatika">Teknik Informatika</option>
-                <option value="Sistem Informasi">Sistem Informasi</option>
-            </select>
-            <select
-                className="border rounded-md p-2"
-                value={filters.lecturer}
-                onChange={(e) => setFilters({ ...filters, lecturer: e.target.value })}
-            >
-                <option value="">Dosen</option>
-                <option value="Dr. John Doe">Dr. John Doe</option>
-                <option value="Dr. Jane Smith">Dr. Jane Smith</option>
-            </select>
-            <select
-                className="border rounded-md p-2"
-                value={filters.room}
-                onChange={(e) => setFilters({ ...filters, room: e.target.value })}
-            >
-                <option value="">Ruangan</option>
-                <option value="Lab Komputer 1">Lab Komputer 1</option>
-                <option value="Lab Komputer 2">Lab Komputer 2</option>
-            </select>
-        </div>
-    );
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
+    if (error) {
+        return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
+    }
     return (
         <div className="space-y-8 p-4">
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Jadwal Kuliah</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Daftar Jadwal</h2>
+                <button
+                    onClick={() => setCreateModalOpen(true)}
+                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                >
+                    Tambah Jadwal
+                </button>
+            </div>
+
+            <DynamicTable
+                columns={scheduleColumns}
+                data={schedules}
+                className="shadow-sm"
+                searchable
+                filterable
+                searchFields={['course.course_name', 'room']}
+                renderActions={(schedule: ScheduleRead) => (
                     <div className="flex space-x-2">
                         <button
-                            onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                            onClick={() => handleUpdateClick(schedule)}
+                            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm font-medium"
                         >
-                            {viewMode === 'table' ? 'Lihat Kalender' : 'Lihat Tabel'}
+                            Edit
                         </button>
                         <button
-                            onClick={handleAddSchedule}
-                            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-opacity-90"
+                            onClick={() => handleDeleteClick(schedule)}
+                            className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm font-medium"
                         >
-                            Tambah Jadwal
+                            Hapus
                         </button>
-                        <button
-                            onClick={() => handleExport('excel')}
-                            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                        >
-                            Export Excel
-                        </button>
-                        <button
-                            onClick={() => handleExport('pdf')}
-                            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                        >
-                            Export PDF
-                        </button>
-                    </div>
-                </div>
-
-                {renderFilters()}
-
-                {viewMode === 'table' ? (
-                    <DynamicTable
-                        columns={scheduleColumns}
-                        data={schedules}
-                        className="shadow-sm"
-                        searchable={true}
-                        filterable={true}
-                        searchFields={['courseName', 'lecturer', 'room', 'material']}
-                        renderActions={(_schedule: Schedule) => (
-                            <div className="flex space-x-2">
-                                <button
-                                    onClick={() => {/* Implement edit */ }}
-                                    className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={() => {/* Implement delete */ }}
-                                    className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                                >
-                                    Hapus
-                                </button>
-                            </div>
-                        )}
-                    />
-                ) : (
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        {/* Implement calendar view here */}
-                        <p className="text-center text-gray-500">Calendar view coming soon...</p>
                     </div>
                 )}
-            </div>
+            />
+
+            <CreateScheduleModal
+                isOpen={createModalOpen}
+                onClose={() => setCreateModalOpen(false)}
+                onCreateSchedule={handleCreateSchedule}
+            />
+
+            <UpdateScheduleModal
+                isOpen={updateModalOpen}
+                onClose={() => setUpdateModalOpen(false)}
+                currentSchedule={currentSchedule}
+                onUpdateSchedule={handleUpdateSchedule}
+            />
         </div>
     );
 };
