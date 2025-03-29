@@ -21,6 +21,7 @@ import CourseList from './pages/Academic/CourseList';
 import Schedules from './pages/Schedule/Schedules';
 import InstructorList from './pages/Instructor/InstructorList';
 import InstructorDetail from './pages/Instructor/InstructorDetail';
+import Swal from 'sweetalert2'; // Make sure to import Swal
 
 
 function App() {
@@ -28,6 +29,44 @@ function App() {
   const [_, setIsAuthenticated] = useState<boolean>(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+
+  const isTokenExpired = () => {
+    const token = localStorage.getItem('token');
+    if (!token) return true;
+
+    try {
+      const payload = token.split('.')[1];
+      const decodedPayload = JSON.parse(atob(payload));
+      if (decodedPayload.exp) {
+        const expirationTime = decodedPayload.exp * 1000;
+        return Date.now() >= expirationTime;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true;
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+
+    if (token && isTokenExpired() && pathname !== '/auth/signin') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Session Expired',
+        text: 'Your session has expired. Please sign in again.',
+        confirmButtonText: 'Sign In',
+        confirmButtonColor: '#3085d6', // Blue color for the button
+        allowOutsideClick: false,
+      }).then(() => {
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+        navigate('/auth/signin', { replace: true });
+      });
+    }
+  }, [pathname, navigate]);
+
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -41,6 +80,7 @@ function App() {
     setIsAuthenticated(true);
     navigate('/');
   };
+
 
 
   const aktif = !!localStorage.getItem('token')

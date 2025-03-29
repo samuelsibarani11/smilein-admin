@@ -1,6 +1,8 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { AdminRead, AdminUpdate } from '../../types/admin';
 import { updateAdmin } from '../../api/adminApi';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 interface PersonalInformationProps {
     initialData?: AdminRead;
@@ -15,11 +17,13 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
         updated_at: ''
     }
 }) => {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState<AdminUpdate>({
         full_name: initialData.full_name,
         username: initialData.username,
     });
-    const [bio, setBio] = useState('');
+    const [_, setBio] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         // Update form data when initial data changes
@@ -32,6 +36,10 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
 
+        if (!isEditing) {
+            setIsEditing(true);
+        }
+
         if (name === 'bio') {
             setBio(value);
         } else {
@@ -42,17 +50,79 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
         }
     };
 
+    const handleSaveClick = () => {
+        // Show warning modal using SweetAlert2
+        Swal.fire({
+            title: 'Peringatan!',
+            text: 'Mengedit berarti memasukan kembali credential anda saat login. Anda akan diminta untuk login kembali setelah perubahan disimpan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Lanjutkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Submit the form programmatically
+                document.getElementById('profile-form')?.dispatchEvent(
+                    new Event('submit', { bubbles: true, cancelable: true })
+                );
+            }
+        });
+    };
+
+    const handleCancelEdit = () => {
+        // Reset form data to initial values
+        setFormData({
+            full_name: initialData.full_name,
+            username: initialData.username,
+        });
+        setIsEditing(false);
+    };
+
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
             // Assuming the admin_id is available in the initial data
             if (initialData.admin_id) {
                 await updateAdmin(initialData.admin_id, formData);
-                alert('Profile updated successfully!');
+
+                // Remove authentication token from localStorage
+                localStorage.removeItem('token');
+
+                // Show success message using SweetAlert2
+                Swal.fire({
+                    title: 'Sukses!',
+                    text: 'Profile berhasil diperbarui! Anda perlu login kembali dengan credential yang telah diperbarui.',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    // Redirect to sign-in page
+                    navigate('/signin');
+                });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating profile', error);
-            alert('Failed to update profile');
+
+            // More specific error messages using SweetAlert2
+            if (error.message === 'Network Error') {
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'CORS Error: Tidak dapat terhubung ke server. Silakan hubungi administrator.',
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: `Gagal memperbarui profil: ${error.message || 'Unknown error'}`,
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'OK'
+                });
+            }
         }
     };
 
@@ -64,7 +134,7 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
                 </h3>
             </div>
             <div className="p-7">
-                <form onSubmit={handleSubmit}>
+                <form id="profile-form" onSubmit={handleSubmit}>
                     <div className="mb-5.5 flex flex-col gap-5.5 sm:flex-row">
                         <div className="w-full sm:w-1/2">
                             <label
@@ -110,11 +180,7 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
                                 />
                             </div>
                         </div>
-
-
                     </div>
-
-
 
                     <div className="mb-5.5">
                         <label
@@ -138,12 +204,15 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
                         <button
                             className="flex justify-center rounded border border-stroke py-2 px-6 font-medium text-black hover:shadow-1 dark:border-strokedark dark:text-white"
                             type="button"
+                            onClick={handleCancelEdit}
                         >
                             Cancel
                         </button>
                         <button
                             className="flex justify-center rounded bg-primary py-2 px-6 font-medium text-gray hover:bg-opacity-90"
-                            type="submit"
+                            type="button"
+                            onClick={handleSaveClick}
+                            disabled={!isEditing}
                         >
                             Save
                         </button>

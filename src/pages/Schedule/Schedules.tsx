@@ -28,7 +28,13 @@ const Schedules: React.FC = () => {
         try {
             setLoading(true);
             const data = await scheduleApi.getSchedules();
-            setSchedules(data);
+
+            const enhancedData = data.map(schedule => ({
+                ...schedule,
+                course_name: schedule.course?.course_name || 'N/A'
+            }));
+
+            setSchedules(enhancedData);
             setError(null);
         } catch (err) {
             console.error('Failed to fetch schedules:', err);
@@ -169,6 +175,7 @@ const Schedules: React.FC = () => {
     if (error) {
         return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
     }
+
     return (
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center">
@@ -187,7 +194,7 @@ const Schedules: React.FC = () => {
                 className="shadow-sm"
                 searchable
                 filterable
-                searchFields={['course.course_name', 'room']}
+                searchFields={['course_name', 'room']}
                 renderActions={(schedule: ScheduleRead) => (
                     <div className="flex space-x-2">
                         <button

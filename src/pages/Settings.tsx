@@ -2,8 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Breadcrumb from '../components/Breadcrumbs/Breadcrumb';
 import PersonalInformation from '../components/Profile/PersonalInformation';
 import UserPhoto from '../components/Profile/UserPhoto';
-import { getAdmin } from '../api/adminApi'; // Assuming this is the method to fetch admin details
+import { getAdmin, getAdminByUsername } from '../api/adminApi';
 import { AdminRead } from '../types/admin';
+import { jwtDecode } from 'jwt-decode';
+
+interface DecodedToken {
+  sub?: string;
+  user_type?: string;
+  exp?: number;
+}
 
 const Settings: React.FC = () => {
   const [adminData, setAdminData] = useState<AdminRead | undefined>(undefined);
@@ -13,16 +20,27 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
-        // Assuming you have a way to get the current admin's ID 
-        // This might come from a context, local storage, or an authentication service
-        const currentAdminId = 1; // Replace with actual method to get current admin ID
-        
-        const fetchedAdminData = await getAdmin(currentAdminId);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("Token not found in localStorage");
+        }
+
+        // Decode the token right here in the fetchAdminData function
+        const decoded = jwtDecode<DecodedToken>(token);
+        console.log("Decoded token:", decoded);
+
+        if (!decoded.sub) {
+          throw new Error("Username not found in token");
+        }
+
+        // First try to get admin using the /me endpoint
+        const fetchedAdminData = await getAdminByUsername(decoded.sub);
         setAdminData(fetchedAdminData);
         setIsLoading(false);
+
       } catch (err) {
         console.error('Failed to fetch admin data', err);
-        setError('Failed to load admin information');
+        setError('Failed to load admin information. Please try logging in again.');
         setIsLoading(false);
       }
     };
@@ -30,12 +48,14 @@ const Settings: React.FC = () => {
     fetchAdminData();
   }, []);
 
+  
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <div className="text-red-500 p-4">{error}</div>;
   }
 
   return (
@@ -49,9 +69,9 @@ const Settings: React.FC = () => {
           </div>
 
           <div className="col-span-5 xl:col-span-2">
-            <UserPhoto 
-              adminId={adminData?.admin_id} 
-              currentProfilePicture={adminData?.profile_picture_url} 
+            <UserPhoto
+              adminId={adminData?.admin_id}
+              currentProfilePicture={adminData?.profile_picture_url}
             />
           </div>
         </div>

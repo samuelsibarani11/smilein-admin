@@ -1,25 +1,27 @@
 import React, { useState, useRef } from 'react';
-import { uploadProfilePicture } from '../../api/adminApi';
+import { getAdminProfilePicture, uploadProfilePicture } from '../../api/adminApi';
 import userThree from '../../images/user/user-03.png';
+import Swal from 'sweetalert2'; // Import Swal
 
 interface UserPhotoProps {
   adminId?: number;
   currentProfilePicture?: string | null;
+  className?: string;
 }
 
-const UserPhoto: React.FC<UserPhotoProps> = ({ 
-  adminId, 
-  currentProfilePicture = userThree 
+const UserPhoto: React.FC<UserPhotoProps> = ({
+  adminId,
+  currentProfilePicture = userThree
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(currentProfilePicture);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      // Create a preview of the selected image
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result as string);
@@ -31,29 +33,127 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
   const handleUpload = async () => {
     if (selectedFile && adminId) {
       try {
+        setIsUploading(true);
         const updatedAdmin = await uploadProfilePicture(adminId, selectedFile);
-        alert('Profile picture uploaded successfully!');
-        // Optionally update the preview or state
+        // After successful upload, fetch the updated profile picture URL
+        const profilePicData = await getAdminProfilePicture(adminId);
+        setPreviewImage(profilePicData.profile_picture_url);
+
+        // Show success message with Swal instead of alert
+        Swal.fire({
+          title: 'Success!',
+          text: 'Profile picture uploaded successfully!',
+          icon: 'success',
+          confirmButtonColor: '#3C50E0',
+          timer: 1500
+        }).then(() => {
+          // Reload the page after the alert is closed
+          window.location.reload();
+        });
       } catch (error) {
         console.error('Error uploading profile picture', error);
-        alert('Failed to upload profile picture');
+        // Show error message with Swal
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to upload profile picture',
+          icon: 'error',
+          confirmButtonColor: '#3C50E0'
+        });
+        setIsUploading(false);
       }
     } else {
-      alert('Please select a file and ensure admin ID is available');
+      // Show warning message with Swal
+      Swal.fire({
+        title: 'Warning!',
+        text: 'Please select a file and ensure admin ID is available',
+        icon: 'warning',
+        confirmButtonColor: '#3C50E0'
+      });
     }
   };
 
   const handleDelete = () => {
-    setSelectedFile(null);
-    setPreviewImage(null);
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (previewImage && previewImage !== userThree) {
+      // Show confirm dialog with Swal
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you want to remove your profile picture?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3C50E0',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setSelectedFile(null);
+          setPreviewImage(null);
+          // Reset file input
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Your profile picture has been removed.',
+            icon: 'success',
+            timer: 1500
+          });
+        }
+      });
+    } else {
+      setSelectedFile(null);
+      setPreviewImage(null);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
+  };
+
+  const handleCancel = () => {
+    // Ask for confirmation if there are unsaved changes
+    if (selectedFile) {
+      Swal.fire({
+        title: 'Discard changes?',
+        text: 'You have unsaved changes. Do you want to discard them?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3C50E0',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, discard',
+        cancelButtonText: 'No, keep editing'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Reset to original state
+          setSelectedFile(null);
+          setPreviewImage(currentProfilePicture);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }
+      });
+    } else {
+      // Reset to original state if no changes
+      setSelectedFile(null);
+      setPreviewImage(currentProfilePicture);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Rest of the component remains the same...
+  // Helper function to format image URL
+  const formatImageUrl = (url: string | null) => {
+    if (!url) return userThree;
+    if (url.startsWith('data:')) return url;
+    if (url.startsWith('/')) return `http://localhost:8000${url}`;
+    return url;
   };
 
   return (
     <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+      {/* Rest of JSX remains the same */}
       <div className="border-b border-stroke py-4 px-7 dark:border-strokedark">
         <h3 className="font-medium text-black dark:text-white">
           Your Photo
@@ -63,9 +163,9 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
         <form action="#">
           <div className="mb-4 flex items-center gap-3">
             <div className="h-14 w-14 rounded-full">
-              <img 
-                src={previewImage || userThree} 
-                alt="User" 
+              <img
+                src={formatImageUrl(previewImage)}
+                alt="User"
                 className="h-full w-full object-cover rounded-full"
               />
             </div>
@@ -74,19 +174,21 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
                 Edit your photo
               </span>
               <span className="flex gap-2.5">
-                <button 
+                <button
                   type="button"
-                  onClick={handleDelete} 
+                  onClick={handleDelete}
                   className="text-sm hover:text-primary"
+                  disabled={isUploading}
                 >
                   Delete
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={handleUpload}
                   className="text-sm hover:text-primary"
+                  disabled={!selectedFile || isUploading}
                 >
-                  Update
+                  {isUploading ? 'Uploading...' : 'Update'}
                 </button>
               </span>
             </div>
@@ -101,6 +203,7 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
               type="file"
               accept="image/*"
               onChange={handleFileChange}
+              disabled={isUploading}
               className="absolute inset-0 z-50 m-0 h-full w-full cursor-pointer p-0 opacity-0 outline-none"
             />
             <div className="flex flex-col items-center justify-center space-y-3">
@@ -144,6 +247,8 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
           <div className="flex justify-end gap-4.5">
             <button
               type="button"
+              onClick={handleCancel}
+              disabled={isUploading}
               className="flex justify-center rounded border border-stroke py-2 px-6 font-medium text-black hover:shadow-1 dark:border-strokedark dark:text-white"
             >
               Cancel
@@ -151,9 +256,10 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
             <button
               type="button"
               onClick={handleUpload}
+              disabled={!selectedFile || isUploading}
               className="flex justify-center rounded bg-primary py-2 px-6 font-medium text-gray hover:bg-opacity-90"
             >
-              Save
+              {isUploading ? 'Uploading...' : 'Save'}
             </button>
           </div>
         </form>

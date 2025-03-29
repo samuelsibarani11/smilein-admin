@@ -3,13 +3,13 @@ import { getStudents, deleteStudent } from '../../api/studentApi';
 import { StudentRead } from '../../types/student';
 import Swal from 'sweetalert2';
 import ProfileCard from '../../components/List/List';
-import AddStudentModal from '../../components/User/AddStudentModal';  // Import the modal component
+import AddStudentModal from '../../components/User/AddStudentModal';
 
 const StudentList = () => {
     const [students, setStudents] = useState<StudentRead[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);  // State to control modal visibility
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
     useEffect(() => {
         loadStudents();
@@ -70,11 +70,15 @@ const StudentList = () => {
     };
 
     if (loading) {
-        return <div className="p-4">Loading students...</div>;
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
     if (error) {
-        return <div className="p-4 text-red-500">{error}</div>;
+        return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
     }
 
     return (
@@ -82,7 +86,7 @@ const StudentList = () => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">Students</h2>
                 <button
-                    onClick={() => setIsModalOpen(true)}  // Open modal instead of redirecting
+                    onClick={() => setIsModalOpen(true)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
                 >
                     Add New Student
