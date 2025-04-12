@@ -19,6 +19,7 @@ export interface AdminCreate {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    password:string;
   }
   
   export interface AdminUpdate {

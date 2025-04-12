@@ -15,7 +15,7 @@ const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
     const [error, setError] = useState<string | null>(null);
 
     const daysOfWeek = [
-        'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+        'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'
     ];
 
     useEffect(() => {

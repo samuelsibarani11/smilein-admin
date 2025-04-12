@@ -71,15 +71,6 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
         });
     };
 
-    const handleCancelEdit = () => {
-        // Reset form data to initial values
-        setFormData({
-            full_name: initialData.full_name,
-            username: initialData.username,
-        });
-        setIsEditing(false);
-    };
-
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
@@ -201,13 +192,6 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
                     </div>
 
                     <div className="flex justify-end gap-4.5">
-                        <button
-                            className="flex justify-center rounded border border-stroke py-2 px-6 font-medium text-black hover:shadow-1 dark:border-strokedark dark:text-white"
-                            type="button"
-                            onClick={handleCancelEdit}
-                        >
-                            Cancel
-                        </button>
                         <button
                             className="flex justify-center rounded bg-primary py-2 px-6 font-medium text-gray hover:bg-opacity-90"
                             type="button"

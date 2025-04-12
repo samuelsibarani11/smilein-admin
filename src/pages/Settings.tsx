@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Breadcrumb from '../components/Breadcrumbs/Breadcrumb';
 import PersonalInformation from '../components/Profile/PersonalInformation';
 import UserPhoto from '../components/Profile/UserPhoto';
-import { getAdminByUsername } from '../api/adminApi';
+import ChangePassword from '../components/Profile/ChangePassword';
+import { getAdmin } from '../api/adminApi';
 import { AdminRead } from '../types/admin';
 import { jwtDecode } from 'jwt-decode';
 
@@ -10,12 +11,14 @@ interface DecodedToken {
   sub?: string;
   user_type?: string;
   exp?: number;
+  user_id: any;
 }
 
 const Settings: React.FC = () => {
   const [adminData, setAdminData] = useState<AdminRead | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  console.log(adminData)
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
@@ -33,7 +36,7 @@ const Settings: React.FC = () => {
         }
 
         // First try to get admin using the /me endpoint
-        const fetchedAdminData = await getAdminByUsername(decoded.sub);
+        const fetchedAdminData = await getAdmin(decoded.user_id);
         setAdminData(fetchedAdminData);
         setIsLoading(false);
 
@@ -69,6 +72,11 @@ const Settings: React.FC = () => {
         <div className="grid grid-cols-5 gap-8">
           <div className="col-span-5 xl:col-span-3">
             <PersonalInformation initialData={adminData} />
+
+            {/* Add the ChangePassword component below PersonalInformation */}
+            <div className="mt-8">
+              <ChangePassword adminId={adminData?.admin_id} />
+            </div>
           </div>
 
           <div className="col-span-5 xl:col-span-2">

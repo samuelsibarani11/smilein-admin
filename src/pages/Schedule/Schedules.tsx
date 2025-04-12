@@ -8,7 +8,7 @@ import CreateScheduleModal from '../../components/Schedule/CreateScheduleModal';
 import UpdateScheduleModal from '../../components/Schedule/UpdateScheduleModal';
 
 const DAYS_OF_WEEK = [
-    'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+    '', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
 ];
 
 const Schedules: React.FC = () => {
@@ -86,7 +86,7 @@ const Schedules: React.FC = () => {
         setCurrentSchedule(schedule);
         Swal.fire({
             title: 'Konfirmasi Penghapusan',
-            text: 'Apakah anda yakin ingin menghapus jadwal ini?',
+            text: `Apakah anda yakin ingin menghapus jadwal "${schedule.course?.course_name || ''}" di ruangan ${schedule.room}?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#EF4444',
@@ -95,21 +95,36 @@ const Schedules: React.FC = () => {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                handleDeleteConfirm();
+                handleDeleteConfirm(schedule.schedule_id);
             }
         });
     };
 
-    const handleDeleteConfirm = async (): Promise<void> => {
-        if (!currentSchedule) return;
-
+    const handleDeleteConfirm = async (scheduleId: number): Promise<void> => {
         try {
-            await scheduleApi.deleteSchedule(currentSchedule.schedule_id);
-            setSchedules(schedules.filter(s => s.schedule_id !== currentSchedule.schedule_id));
+            setLoading(true);
+
+            // Log untuk debugging
+            console.log('Deleting schedule with ID:', scheduleId);
+
+            // Panggil API delete
+            await scheduleApi.deleteSchedule(scheduleId);
+
+            // Update state setelah berhasil hapus
+            setSchedules(schedules.filter(s => s.schedule_id !== scheduleId));
+
             showAlert('Terhapus!', 'Jadwal telah dihapus.', 'success');
-        } catch (err) {
-            console.error('Failed to delete schedule:', err);
-            showAlert('Error!', 'Gagal menghapus jadwal.', 'error');
+        } catch (error: unknown) {
+            console.error('Failed to delete schedule:', error);
+
+            let errorMessage = 'Gagal menghapus jadwal.';
+            if (error instanceof Error) {
+                errorMessage = `Gagal menghapus jadwal: ${error.message}`;
+            }
+
+            showAlert('Error!', errorMessage, 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -140,7 +155,7 @@ const Schedules: React.FC = () => {
             header: 'Hari',
             accessor: 'day_of_week',
             minWidth: '100px',
-            cell: (item: ScheduleRead) => DAYS_OF_WEEK[item.day_of_week]
+            cell: (item: ScheduleRead) => DAYS_OF_WEEK[item.day_of_week] || 'N/A'
         },
         {
             header: 'Waktu',

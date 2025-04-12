@@ -5,8 +5,16 @@ import Swal from 'sweetalert2';
 import * as courseApi from '../../api/courseApi';
 import * as instructorApi from '../../api/instructorApi';
 
+// Perbaikan: Sesuaikan dengan urutan standar (0 = Minggu, 1 = Senin, dst)
+// Perbaikan: Sesuaikan nilai hari untuk dimulai dari 1 bukan 0
 const DAYS_OF_WEEK = [
-    'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+    { value: 1, label: 'Senin' },
+    { value: 2, label: 'Selasa' },
+    { value: 3, label: 'Rabu' },
+    { value: 4, label: 'Kamis' },
+    { value: 5, label: 'Jumat' },
+    { value: 6, label: 'Sabtu' },
+    { value: 7, label: 'Minggu' }
 ];
 
 interface UpdateScheduleModalProps {
@@ -249,8 +257,11 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
                     >
-                        {DAYS_OF_WEEK.map((day, index) => (
-                            <option key={index} value={index}>{day}</option>
+                        <option value="">Pilih Hari</option>
+                        {DAYS_OF_WEEK.map((day) => (
+                            <option key={day.value} value={day.value}>
+                                {day.label}
+                            </option>
                         ))}
                     </select>
                 </div>

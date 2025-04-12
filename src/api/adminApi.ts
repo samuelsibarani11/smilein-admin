@@ -2,10 +2,14 @@
 import apiClient from './client';
 import { AdminCreate, AdminRead, AdminUpdate } from '../types/admin';
 
-
-
 interface ProfilePictureResponse {
   profile_picture_url: string;
+}
+
+interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 // Create a new admin
@@ -51,12 +55,23 @@ export const updateAdmin = async (adminId: number, adminData: AdminUpdate): Prom
   }
 };
 
+// Change password
+export const changePassword = async (passwordData: ChangePasswordRequest): Promise<any> => {
+  try {
+    const response = await apiClient.post('/admins/change-password', passwordData);
+    return response.data;
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
+};
+
 // Delete an admin
 export const deleteAdmin = async (adminId: number): Promise<void> => {
   await apiClient.delete(`/admins/${adminId}`);
 };
 
-// Optional:   admin profile picture (similar to student API)
+// Optional: admin profile picture (similar to student API)
 export const uploadProfilePicture = async (adminId: number, file: File): Promise<AdminRead> => {
   const formData = new FormData();
   formData.append('file', file);

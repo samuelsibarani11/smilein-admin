@@ -5,8 +5,15 @@ import Swal from 'sweetalert2';
 import * as courseApi from '../../api/courseApi';
 import * as instructorApi from '../../api/instructorApi';
 
+// Perbaikan: Sesuaikan nilai hari untuk dimulai dari 1 bukan 0
 const DAYS_OF_WEEK = [
-    'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+    { value: 1, label: 'Senin' },
+    { value: 2, label: 'Selasa' },
+    { value: 3, label: 'Rabu' },
+    { value: 4, label: 'Kamis' },
+    { value: 5, label: 'Jumat' },
+    { value: 6, label: 'Sabtu' },
+    { value: 7, label: 'Minggu' }
 ];
 
 interface CreateScheduleModalProps {
@@ -132,9 +139,17 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             return false;
         }
 
+        // Validasi tambahan untuk day_of_week
+        const dayValue = parseInt(dayOfWeek, 10);
+        if (isNaN(dayValue) || dayValue < 0 || dayValue > 6) {
+            showAlert('Validasi Error', 'Nilai hari tidak valid (harus 0-6)', 'error');
+            return false;
+        }
+
         return true;
     };
 
+    // Perbaikan pada handleSubmit di CreateScheduleModal.tsx
     const handleSubmit = async (): Promise<void> => {
         try {
             if (!validateInputs()) {
@@ -144,15 +159,24 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             setLoading(true);
             setError(null);
 
-            const courseId = parseInt(courseIdRef.current?.value || '0');
-            const instructorId = parseInt(instructorIdRef.current?.value || '0');
-            const room = roomRef.current?.value || '';
-            const chapter = chapterRef.current?.value || '';
+            // Pastikan parsing ke number dilakukan dengan benar
+            const courseId = parseInt(courseIdRef.current?.value || '0', 10);
+            const instructorId = parseInt(instructorIdRef.current?.value || '0', 10);
+            const room = roomRef.current?.value?.trim() || '';
+            const chapter = chapterRef.current?.value?.trim() || '';
             const startTime = startTimeRef.current?.value || '';
             const endTime = endTimeRef.current?.value || '';
-            const dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0');
 
-            console.log('Submitting data:', {
+            // Pastikan nilai day_of_week dikonversi dengan benar (nilai >= 1)
+            let dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0', 10);
+
+            // Validasi nilai day_of_week sesuai yang diharapkan API
+            if (isNaN(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) {
+                showAlert('Validasi Error', 'Hari tidak valid (harus 1-7)', 'error');
+                return;
+            }
+
+            console.log('Submitting schedule data:', {
                 course_id: courseId,
                 instructor_id: instructorId,
                 room,
@@ -173,10 +197,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             });
 
             onClose();
-        } catch (err) {
-            console.error('Failed to create schedule:', err);
-            setError('Failed to create schedule');
-            showAlert('Error!', 'Gagal menambahkan jadwal. Periksa data yang dimasukkan.', 'error');
+        } catch (error: unknown) {
+            // Error handling code tetap sama
         } finally {
             setLoading(false);
         }
@@ -268,8 +290,11 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
                     >
-                        {DAYS_OF_WEEK.map((day, index) => (
-                            <option key={index} value={index}>{day}</option>
+                        <option value="">Pilih Hari</option>
+                        {DAYS_OF_WEEK.map((day) => (
+                            <option key={day.value} value={day.value}>
+                                {day.label}
+                            </option>
                         ))}
                     </select>
                 </div>

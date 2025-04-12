@@ -3,13 +3,16 @@ import apiClient from './client';
 import { ScheduleCreate, ScheduleRead, ScheduleUpdate } from '../types/schedule';
 
 // Helper function for error handling
-const handleApiError = (error: any, customMessage: string): never => {
+const handleApiError = (error: unknown, customMessage: string): never => {
   // Log error details for debugging
   console.error(`${customMessage}:`, error);
   
-  // Check if it's an unauthorized error
-  if (error.response?.status === 401) {
-    console.error('Authentication error: Please check if you are logged in');
+  // Check if it's an error with response property (axios error)
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as { response?: { status?: number } };
+    if (axiosError.response?.status === 401) {
+      console.error('Authentication error: Please check if you are logged in');
+    }
   }
   
   // Throw the error for the component to handle
@@ -19,9 +22,18 @@ const handleApiError = (error: any, customMessage: string): never => {
 // Create a new schedule
 export const createSchedule = async (schedule: ScheduleCreate): Promise<ScheduleRead> => {
   try {
+    console.log('Creating schedule with data:', JSON.stringify(schedule, null, 2));
+    console.log('day_of_week type:', typeof schedule.day_of_week);
+    console.log('day_of_week value:', schedule.day_of_week);
+    
     const response = await apiClient.post<ScheduleRead>('/schedules/', schedule);
     return response.data;
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as any;
+      console.error('Error status:', axiosError.response?.status);
+      console.error('Error data:', JSON.stringify(axiosError.response?.data, null, 2));
+    }
     return handleApiError(error, 'Failed to create schedule');
   }
 };
@@ -77,8 +89,25 @@ export const updateSchedule = async (
 // Delete a schedule
 export const deleteSchedule = async (scheduleId: number): Promise<void> => {
   try {
-    await apiClient.delete(`/schedules/${scheduleId}`);
-  } catch (error) {
+    console.log(`Attempting to delete schedule with ID: ${scheduleId}`);
+    
+    // Tambahkan timeout lebih lama untuk menghindari race condition
+    await apiClient.delete(`/schedules/${scheduleId}`, {
+      timeout: 10000 
+    });
+    
+    console.log(`Successfully deleted schedule with ID: ${scheduleId}`);
+  } catch (error: unknown) {
+    console.error(`Error deleting schedule with ID ${scheduleId}:`, error);
+    
+    // Log error detail untuk debugging
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as any;
+      console.error('Error status:', axiosError.response?.status);
+      console.error('Error data:', JSON.stringify(axiosError.response?.data, null, 2));
+    }
+    
+    // Re-throw untuk ditangani di komponen
     handleApiError(error, `Failed to delete schedule with ID ${scheduleId}`);
   }
 };
