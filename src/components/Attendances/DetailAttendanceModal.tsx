@@ -7,7 +7,6 @@ interface Attendance {
     course: string;
     date: string;
     checkIn: string;
-    checkOut: string;
     status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
     locationData: {
         latitude: number;
@@ -56,12 +55,7 @@ export const showAttendanceDetails = async (attendance: Attendance) => {
                                 ${attendance.checkIn || 'Tidak Check-in'}
                             </p>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Check-out</p>
-                            <p class="font-medium ${!attendance.checkOut ? 'text-red-600 dark:text-red-400' : 'dark:text-gray-100'}">
-                                ${attendance.checkOut || 'Tidak Check-out'}
-                            </p>
-                        </div>
+                        
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">Status</p>
                             <p class="font-medium">

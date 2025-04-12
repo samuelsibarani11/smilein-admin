@@ -7,13 +7,21 @@ import { InstructorRead } from '../../types/instructor';
 
 const InstructorList = () => {
     const [instructors, setInstructors] = useState<InstructorRead[]>([]);
+    const [filteredInstructors, setFilteredInstructors] = useState<InstructorRead[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [searchTerm, setSearchTerm] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
     useEffect(() => {
         loadInstructors();
     }, []);
+
+    useEffect(() => {
+        // Apply filters whenever instructors, searchTerm, or statusFilter changes
+        applyFilters();
+    }, [instructors, searchTerm, statusFilter]);
 
     const loadInstructors = async () => {
         try {
@@ -21,6 +29,7 @@ const InstructorList = () => {
             setError(null);
             const data = await getInstructors();
             setInstructors(data);
+            setFilteredInstructors(data);
         } catch (err) {
             setError('Failed to load instructors');
             console.error(err);
@@ -29,34 +38,54 @@ const InstructorList = () => {
         }
     };
 
+    const applyFilters = () => {
+        let result = [...instructors];
+
+        // Apply search filter (search by NIDN)
+        if (searchTerm.trim() !== '') {
+            result = result.filter(instructor =>
+                instructor.nidn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                instructor.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            const isActive = statusFilter === 'active';
+            result = result.filter(instructor => instructor.is_active === isActive);
+        }
+
+        setFilteredInstructors(result);
+    };
+
     const handleDelete = async (instructorId: number) => {
         const result = await Swal.fire({
-            title: 'Are you sure?',
-            text: "You won't be able to revert this!",
+            title: 'Apakah anda yakin?',
+            text: "Anda tidak dapat mengembalikan ini!",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Delete',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Hapus',
+            cancelButtonText: 'Batal'
         });
 
         if (result.isConfirmed) {
             try {
                 await deleteInstructor(instructorId);
                 await Swal.fire({
-                    title: 'Deleted!',
-                    text: 'Instructor data has been deleted.',
+                    title: 'Terhapus!',
+                    text: 'Data instruktur telah terhapus.',
                     icon: 'success',
                     confirmButtonColor: '#4CAF50'
                 });
                 loadInstructors();
             } catch (err) {
-                setError('Failed to delete instructor');
+                setError('Gagal menghapus data instruktur');
                 console.error(err);
                 await Swal.fire({
                     title: 'Error!',
-                    text: 'Failed to delete instructor.',
+                    text: 'Gagal menghapus data instruktur.',
                     icon: 'error',
                     confirmButtonColor: '#d33'
                 });
@@ -64,7 +93,6 @@ const InstructorList = () => {
         }
     };
 
-    // Helper function to convert instructor.is_active to a status string
     const getStatusText = (isActive: boolean): 'Active' | 'Inactive' => {
         return isActive ? 'Active' : 'Inactive';
     };
@@ -78,19 +106,52 @@ const InstructorList = () => {
     }
 
     if (error) {
-        return <div className="p-4 text-red-500">{error}</div>;
+        return <div className="p-4 text-red-500 dark:text-red-400">{error}</div>;
     }
 
     return (
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Instructors</h2>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-                >
-                    Add New Instructor
-                </button>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Instruktur</h2>
+                <div className="flex items-center space-x-2">
+                    {/* Search Input with Icon */}
+                    <div className="relative w-48 md:w-60">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search by NIDN..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="p-2 pl-10 w-full text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="p-2 w-32 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+
+                    {/* Add Button */}
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm flex items-center transition-colors duration-200 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    >
+                        <svg className="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add New Instructor
+                    </button>
+                </div>
             </div>
 
             {/* Add Instructor Modal */}
@@ -100,17 +161,21 @@ const InstructorList = () => {
                 onSuccess={loadInstructors}
             />
 
-            {instructors.length === 0 ? (
-                <p>No instructors found.</p>
+            {filteredInstructors.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-300">No instructors found.</p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {instructors.map((instructor) => (
+                    {filteredInstructors.map((instructor) => (
                         <ProfileCard
                             key={instructor.instructor_id}
                             id={instructor.instructor_id}
                             name={instructor.full_name}
                             email={instructor.email}
-                            description={`NIDN: ${instructor.nidn}`}
+                            description={
+                                <>
+                                    <span className="font-medium">NIDN:</span> {instructor.nidn}
+                                </>
+                            }
                             status={getStatusText(instructor.is_active)}
                             onDelete={() => handleDelete(instructor.instructor_id)}
                             type='instructor'

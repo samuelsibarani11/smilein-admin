@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Breadcrumb from '../components/Breadcrumbs/Breadcrumb';
 import PersonalInformation from '../components/Profile/PersonalInformation';
 import UserPhoto from '../components/Profile/UserPhoto';
-import { getAdmin, getAdminByUsername } from '../api/adminApi';
+import { getAdminByUsername } from '../api/adminApi';
 import { AdminRead } from '../types/admin';
 import { jwtDecode } from 'jwt-decode';
 
@@ -16,7 +16,6 @@ const Settings: React.FC = () => {
   const [adminData, setAdminData] = useState<AdminRead | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
@@ -48,10 +47,14 @@ const Settings: React.FC = () => {
     fetchAdminData();
   }, []);
 
-  
+
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (error) {

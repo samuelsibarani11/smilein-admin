@@ -12,7 +12,6 @@ interface Attendance {
     course: string;
     date: string;
     checkIn: string;
-    checkOut: string;
     status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
     locationData: {
         latitude: number;
@@ -37,7 +36,6 @@ const sampleAttendances: Attendance[] = [
         course: 'Algoritma dan Pemrograman',
         date: '2024-01-05',
         checkIn: '08:00:00',
-        checkOut: '09:40:00',
         status: 'Hadir',
         locationData: [
             {
@@ -61,7 +59,6 @@ const sampleAttendances: Attendance[] = [
         course: 'Basis Data',
         date: '2024-01-05',
         checkIn: '10:15:00',
-        checkOut: '11:45:00',
         status: 'Terlambat',
         locationData: [
             {
@@ -86,7 +83,6 @@ const sampleAttendances: Attendance[] = [
         course: 'Pemrograman Web',
         date: '2024-01-06',
         checkIn: '',
-        checkOut: '',
         status: 'Tidak Hadir',
         locationData: [],
         faceVerification: {
@@ -108,23 +104,30 @@ const courses = [
 
 const AttendanceHistory: React.FC = () => {
     const [attendances, setAttendances] = useState<Attendance[]>(sampleAttendances);
-    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [selectedDate, setSelectedDate] = useState('');
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
     const [currentAttendance, setCurrentAttendance] = useState<Attendance | null>(null);
+    const [searchNim, setSearchNim] = useState('');
+    const [searchName, setSearchName] = useState('');
 
     // Filter attendances based on selected filters
     const filteredAttendances = useMemo(() => {
         return attendances.filter(attendance => {
-            const dateInRange = (!dateRange.start || attendance.date >= dateRange.start) &&
-                (!dateRange.end || attendance.date <= dateRange.end);
+            const matchesDate = !selectedDate || attendance.date === selectedDate;
             const matchesCourse = !selectedCourse || attendance.course === selectedCourse;
             const matchesStatus = !selectedStatus || attendance.status === selectedStatus;
 
-            return dateInRange && matchesCourse && matchesStatus;
+            // Separate filters for studentId and studentName
+            const matchesNim = !searchNim ||
+                attendance.studentId.toLowerCase().includes(searchNim.toLowerCase());
+            const matchesName = !searchName ||
+                attendance.studentName.toLowerCase().includes(searchName.toLowerCase());
+
+            return matchesDate && matchesCourse && matchesStatus && matchesNim && matchesName;
         });
-    }, [attendances, dateRange, selectedCourse, selectedStatus]);
+    }, [attendances, selectedDate, selectedCourse, selectedStatus, searchNim, searchName]);
 
     const handleShowDetails = (attendance: Attendance) => {
         showAttendanceDetails(attendance);
@@ -166,6 +169,15 @@ const AttendanceHistory: React.FC = () => {
         setIsUpdateModalOpen(true);
     };
 
+    // Format date as month/day/year
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const month = date.getMonth() + 1; // getMonth() returns 0-11
+        const day = date.getDate();
+        const year = date.getFullYear();
+        return `${month}/${day}/${year}`;
+    };
+
     const attendanceColumns: Column[] = [
         {
             header: 'ID Kehadiran',
@@ -193,7 +205,7 @@ const AttendanceHistory: React.FC = () => {
             minWidth: '120px',
             cell: (item: Attendance) => (
                 <span>
-                    {new Date(item.date).toLocaleDateString('id-ID')}
+                    {formatDate(item.date)}
                 </span>
             )
         },
@@ -231,36 +243,25 @@ const AttendanceHistory: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tanggal Mulai
+                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
+                        Tanggal
                     </label>
                     <input
                         type="date"
-                        value={dateRange.start}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                        className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2 outline-none focus:border-primary"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 outline-none focus:border-primary shadow-sm"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tanggal Akhir
-                    </label>
-                    <input
-                        type="date"
-                        value={dateRange.end}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                        className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2 outline-none focus:border-primary"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                         Mata Kuliah
                     </label>
                     <div className="relative">
                         <select
                             value={selectedCourse}
                             onChange={(e) => setSelectedCourse(e.target.value)}
-                            className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2 pr-10 outline-none focus:border-primary appearance-none"
+                            className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 pr-10 outline-none focus:border-primary appearance-none shadow-sm"
                         >
                             <option value="">Semua Mata Kuliah</option>
                             {courses.map((course, index) => (
@@ -276,14 +277,14 @@ const AttendanceHistory: React.FC = () => {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                         Status Kehadiran
                     </label>
                     <div className="relative">
                         <select
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value)}
-                            className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2 pr-10 outline-none focus:border-primary appearance-none"
+                            className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 pr-10 outline-none focus:border-primary appearance-none shadow-sm"
                         >
                             <option value="">Semua Status</option>
                             <option value="Hadir">Hadir</option>
@@ -297,14 +298,41 @@ const AttendanceHistory: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
+                        Cari NIM
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="Masukkan NIM..."
+                        value={searchNim}
+                        onChange={(e) => setSearchNim(e.target.value)}
+                        className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 outline-none focus:border-primary shadow-sm"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
+                        Cari Nama
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="Masukkan nama mahasiswa..."
+                        value={searchName}
+                        onChange={(e) => setSearchName(e.target.value)}
+                        className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 outline-none focus:border-primary shadow-sm"
+                    />
+                </div>
             </div>
 
             <DynamicTable
                 columns={attendanceColumns}
                 data={filteredAttendances}
                 className="shadow-sm"
-                searchable={true}
-                searchFields={['studentId', 'studentName']}
+                searchable={false} // Disable built-in search since we have our own
+                filterable={true}
+                disableBuiltInFilter={true} // Disable built-in filtering
                 renderActions={(attendance: Attendance) => (
                     <div className="flex space-x-2">
                         <button

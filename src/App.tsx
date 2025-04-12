@@ -9,12 +9,8 @@ import Settings from './pages/Settings';
 import DefaultLayout from './layout/DefaultLayout';
 import StudentList from './pages/User/StudentList';
 import AttendanceHistory from './pages/Attendance/Attendances';
-import SendNotification from './pages/Notification/SendNotification';
-import NotificationHistory from './pages/Notification/NotificationHistory';
-import NotificationTemplates from './pages/Notification/NotificationTemplates';
 import SystemSettings from './pages/Settings/SystemSettings';
 import LocationSettings from './pages/Settings/LocationSettings';
-import ProfileSettings from './pages/Settings/ProfileSettings';
 import 'sweetalert2/dist/sweetalert2.css';
 import StudentDetail from './pages/User/StudentDetail';
 import CourseList from './pages/Academic/CourseList';
@@ -57,7 +53,7 @@ function App() {
         title: 'Session Expired',
         text: 'Your session has expired. Please sign in again.',
         confirmButtonText: 'Sign In',
-        confirmButtonColor: '#3085d6', // Blue color for the button
+        confirmButtonColor: '#3085d6', 
         allowOutsideClick: false,
       }).then(() => {
         localStorage.removeItem('token');
@@ -194,36 +190,7 @@ function App() {
               />
 
 
-              {/* Notification */}
-              <Route
-                path='/notification/send-notification'
-                element={
-                  <>
-                    <PageTitle title="Send Notification | SmileIn" />
-                    <SendNotification />
-                  </>
-                }
-              />
-              <Route
-                path='/notification/notification-history'
-                element={
-                  <>
-                    <PageTitle title="Notification History | SmileIn" />
-                    <NotificationHistory />
-                  </>
-                }
-              />
-              <Route
-                path='/notification/notification-templates'
-                element={
-                  <>
-                    <PageTitle title="Notification Templates | SmileIn" />
-                    <NotificationTemplates />
-                  </>
-                }
-              />
-
-
+              
               {/* Settings */}
               <Route
                 path='/settings/system-settings'
@@ -243,15 +210,7 @@ function App() {
                   </>
                 }
               />
-              <Route
-                path='/settings/profile-settings'
-                element={
-                  <>
-                    <PageTitle title="Profile Settings | SmileIn" />
-                    <ProfileSettings />
-                  </>
-                }
-              />
+              
 
 
 

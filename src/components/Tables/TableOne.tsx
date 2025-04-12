@@ -1,124 +1,220 @@
-import { BRAND } from '../../types/brand';
-import BrandOne from '../../images/brand/brand-01.svg';
-import BrandTwo from '../../images/brand/brand-02.svg';
-import BrandThree from '../../images/brand/brand-03.svg';
-import BrandFour from '../../images/brand/brand-04.svg';
-import BrandFive from '../../images/brand/brand-05.svg';
+import React, { useState } from 'react';
 
-const brandData: BRAND[] = [
+// Sample course attendance data - replace with your actual data
+const courseData = [
   {
-    logo: BrandOne,
-    name: 'Google',
-    visitors: 3.5,
-    revenues: '5,768',
-    sales: 590,
-    conversion: 4.8,
+    code: 'CS101',
+    name: 'Introduction to Computer Science',
+    totalStudents: 120,
+    attendedStudents: 115,
+    attendance: 95.8,
   },
   {
-    logo: BrandTwo,
-    name: 'Twitter',
-    visitors: 2.2,
-    revenues: '4,635',
-    sales: 467,
-    conversion: 4.3,
+    code: 'MTH201',
+    name: 'Calculus II',
+    totalStudents: 85,
+    attendedStudents: 79,
+    attendance: 92.9,
   },
   {
-    logo: BrandThree,
-    name: 'Github',
-    visitors: 2.1,
-    revenues: '4,290',
-    sales: 420,
-    conversion: 3.7,
+    code: 'ENG104',
+    name: 'Academic Writing',
+    totalStudents: 95,
+    attendedStudents: 87,
+    attendance: 91.6,
   },
   {
-    logo: BrandFour,
-    name: 'Vimeo',
-    visitors: 1.5,
-    revenues: '3,580',
-    sales: 389,
-    conversion: 2.5,
+    code: 'PHY102',
+    name: 'Physics for Engineers',
+    totalStudents: 75,
+    attendedStudents: 68,
+    attendance: 90.7,
   },
   {
-    logo: BrandFive,
-    name: 'Facebook',
-    visitors: 3.5,
-    revenues: '6,768',
-    sales: 390,
-    conversion: 4.2,
+    code: 'CHM101',
+    name: 'General Chemistry',
+    totalStudents: 110,
+    attendedStudents: 98,
+    attendance: 89.1,
+  },
+  {
+    code: 'BIO130',
+    name: 'Molecular Biology',
+    totalStudents: 65,
+    attendedStudents: 57,
+    attendance: 87.7,
+  },
+  {
+    code: 'ECO201',
+    name: 'Microeconomics',
+    totalStudents: 100,
+    attendedStudents: 86,
+    attendance: 86.0,
+  },
+  {
+    code: 'SOC101',
+    name: 'Introduction to Sociology',
+    totalStudents: 130,
+    attendedStudents: 111,
+    attendance: 85.4,
+  },
+  {
+    code: 'PSY102',
+    name: 'Developmental Psychology',
+    totalStudents: 80,
+    attendedStudents: 67,
+    attendance: 83.8,
+  },
+  {
+    code: 'HIS110',
+    name: 'World History',
+    totalStudents: 70,
+    attendedStudents: 58,
+    attendance: 82.9,
+  },
+  {
+    code: 'ART105',
+    name: 'Visual Arts',
+    totalStudents: 60,
+    attendedStudents: 49,
+    attendance: 81.7,
+  },
+  {
+    code: 'GEO120',
+    name: 'Human Geography',
+    totalStudents: 75,
+    attendedStudents: 60,
+    attendance: 80.0,
   },
 ];
 
+// Sort data by attendance percentage (highest to lowest)
+const sortedCourseData = [...courseData].sort((a, b) => b.attendance - a.attendance);
+
 const TableOne = () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Calculate the current items to display
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = sortedCourseData.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(sortedCourseData.length / itemsPerPage);
+
+  // Handle pagination navigation
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
   return (
-    <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
+    <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1 h-full flex flex-col">
       <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
-        Top Channels
+        Kehadiran Mata Kuliah
       </h4>
 
-      <div className="flex flex-col">
-        <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-5">
+      <div className="flex flex-col flex-grow">
+        <div className="grid grid-cols-5 rounded-sm bg-gray-2 dark:bg-meta-4">
           <div className="p-2.5 xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Source
+              Kode
+            </h5>
+          </div>
+          <div className="p-2.5 xl:p-5">
+            <h5 className="text-sm font-medium uppercase xsm:text-base">
+              Mata Kuliah
             </h5>
           </div>
           <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Visitors
+              Total Mahasiswa
             </h5>
           </div>
           <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Revenues
+              Mahasiswa Hadir
             </h5>
           </div>
-          <div className="hidden p-2.5 text-center sm:block xl:p-5">
+          <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Sales
-            </h5>
-          </div>
-          <div className="hidden p-2.5 text-center sm:block xl:p-5">
-            <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Conversion
+              Presentasi Kehadiran
             </h5>
           </div>
         </div>
 
-        {brandData.map((brand, key) => (
-          <div
-            className={`grid grid-cols-3 sm:grid-cols-5 ${
-              key === brandData.length - 1
+        <div className="flex-grow">
+          {currentItems.map((course, key) => (
+            <div
+              className={`grid grid-cols-5 ${key === currentItems.length - 1
                 ? ''
                 : 'border-b border-stroke dark:border-strokedark'
-            }`}
-            key={key}
-          >
-            <div className="flex items-center gap-3 p-2.5 xl:p-5">
-              <div className="flex-shrink-0">
-                <img src={brand.logo} alt="Brand" />
+                }`}
+              key={key}
+            >
+              <div className="flex items-center p-2.5 xl:p-5">
+                <p className="text-black dark:text-white">
+                  {course.code}
+                </p>
               </div>
-              <p className="hidden text-black dark:text-white sm:block">
-                {brand.name}
-              </p>
-            </div>
 
-            <div className="flex items-center justify-center p-2.5 xl:p-5">
-              <p className="text-black dark:text-white">{brand.visitors}K</p>
-            </div>
+              <div className="flex items-center p-2.5 xl:p-5">
+                <p className="text-black dark:text-white">{course.name}</p>
+              </div>
 
-            <div className="flex items-center justify-center p-2.5 xl:p-5">
-              <p className="text-meta-3">${brand.revenues}</p>
-            </div>
+              <div className="flex items-center justify-center p-2.5 xl:p-5">
+                <p className="text-black dark:text-white">{course.totalStudents}</p>
+              </div>
 
-            <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-              <p className="text-black dark:text-white">{brand.sales}</p>
-            </div>
+              <div className="flex items-center justify-center p-2.5 xl:p-5">
+                <p className="text-black dark:text-white">{course.attendedStudents}</p>
+              </div>
 
-            <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-              <p className="text-meta-5">{brand.conversion}%</p>
+              <div className="flex items-center justify-center p-2.5 xl:p-5">
+                <p className={`${course.attendance >= 90 ? 'text-meta-3' :
+                  course.attendance >= 80 ? 'text-meta-5' : 'text-meta-1'}`}>
+                  {course.attendance.toFixed(1)}%
+                </p>
+              </div>
             </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        <div className="flex justify-between items-center mt-4 mb-4">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedCourseData.length)} dari {sortedCourseData.length} mata kuliah
           </div>
-        ))}
+          <div className="flex space-x-2">
+            <button
+              onClick={goToPreviousPage}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded ${currentPage === 1
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-opacity-90'
+                }`}
+            >
+              Sebelumnya
+            </button>
+            <span className="px-3 py-1 bg-gray-100 dark:bg-meta-4 rounded">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded ${currentPage === totalPages
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-opacity-90'
+                }`}
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

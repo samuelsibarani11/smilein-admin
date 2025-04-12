@@ -18,6 +18,7 @@ const UpdateStudentModal: React.FC<UpdateStudentModalProps> = ({
 }) => {
     const usernameRef = useRef<HTMLInputElement>(null);
     const fullNameRef = useRef<HTMLInputElement>(null);
+    const nimRef = useRef<HTMLInputElement>(null); // Added NIM ref
     const majorNameRef = useRef<HTMLInputElement>(null);
     const yearRef = useRef<HTMLInputElement>(null);
     const passwordRef = useRef<HTMLInputElement>(null);
@@ -37,6 +38,7 @@ const UpdateStudentModal: React.FC<UpdateStudentModalProps> = ({
 
             safeSetValue(usernameRef, currentStudent.username);
             safeSetValue(fullNameRef, currentStudent.full_name);
+            safeSetValue(nimRef, currentStudent.nim); // Set NIM value
             safeSetValue(majorNameRef, currentStudent.major_name);
             safeSetValue(yearRef, currentStudent.year);
 
@@ -67,6 +69,7 @@ const UpdateStudentModal: React.FC<UpdateStudentModalProps> = ({
 
         const username = usernameRef.current?.value;
         const fullName = fullNameRef.current?.value;
+        const nim = nimRef.current?.value; // Get NIM value
         const majorName = majorNameRef.current?.value;
         const year = yearRef.current?.value;
         const password = passwordRef.current?.value;
@@ -80,6 +83,9 @@ const UpdateStudentModal: React.FC<UpdateStudentModalProps> = ({
         }
         if (fullName && fullName !== currentStudent.full_name) {
             updateData.full_name = fullName;
+        }
+        if (nim && nim !== currentStudent.nim) { // Check if NIM has changed
+            updateData.nim = nim;
         }
         if (majorName && majorName !== currentStudent.major_name) {
             updateData.major_name = majorName;
@@ -134,6 +140,15 @@ const UpdateStudentModal: React.FC<UpdateStudentModalProps> = ({
                         ref={fullNameRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         placeholder="Masukkan Nama Lengkap"
+                        required
+                    />
+                </div>
+                <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">NIM</label>
+                    <input
+                        ref={nimRef}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
+                        placeholder="Masukkan NIM"
                         required
                     />
                 </div>

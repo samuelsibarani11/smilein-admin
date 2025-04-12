@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getInstructor, updateInstructor, getNextInstructor } from '../../api/instructorApi';
 import { InstructorRead, InstructorUpdate } from '../../types/instructor';
 import About from '../../components/Instructor/About';
+import InstructorCourses from '../../components/Instructor/InstructorCourses';
 import UpdateInstructorModal from '../../components/Instructor/UpdateInstructorModal';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -17,9 +18,10 @@ const InstructorDetail: React.FC = () => {
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
     const [isNavigating, setIsNavigating] = useState<boolean>(false);
 
+    // Removed "Assignment" from tabs array
     const tabs: string[] = [
         'About',
-        'Notification',
+        'Courses'
     ];
 
     useEffect(() => {
@@ -40,21 +42,16 @@ const InstructorDetail: React.FC = () => {
         fetchInstructorDetails();
     }, [id]);
 
-    // Fungsi untuk menangani klik pada tombol next instructor
     const handleNextInstructor = async () => {
-        // Jika sedang loading atau navigating, jangan lakukan apa-apa
         if (loading || isNavigating || !instructorData?.instructor_id) return;
 
         try {
             setIsNavigating(true);
 
-            // Panggil API untuk mendapatkan instructor berikutnya
             const nextInstructor = await getNextInstructor(instructorData.instructor_id);
 
-            // Navigasi ke halaman instructor berikutnya
             navigate(`/instructor/instructor-list/${nextInstructor.instructor_id}`);
 
-            // Jika instructor berikutnya adalah instructor yang sama (hanya ada 1 data)
             if (nextInstructor.instructor_id === instructorData.instructor_id) {
                 Swal.fire({
                     title: 'Info',
@@ -67,7 +64,6 @@ const InstructorDetail: React.FC = () => {
         } catch (err) {
             console.error('Failed to navigate to next instructor', err);
 
-            // Tampilkan pesan error dengan SweetAlert2
             Swal.fire({
                 title: 'Error!',
                 text: 'Gagal mendapatkan data instructor berikutnya',
@@ -84,8 +80,8 @@ const InstructorDetail: React.FC = () => {
         switch (activeTab) {
             case 'About':
                 return <About instructorData={instructorData} />;
-            case 'Notification':
-            // return <Notification />;
+            case 'Courses':
+                return <InstructorCourses instructorData={instructorData} />;
             default:
                 return (
                     <div className="mt-6 p-4 md:p-6 border dark:border-gray-700 rounded-lg dark:bg-gray-800">
@@ -289,6 +285,6 @@ const InstructorDetail: React.FC = () => {
             )}
         </div>
     );
-};
+}
 
 export default InstructorDetail;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StudentRead, StudentUpdate } from '../../types/student';
 import About from '../../components/User/About';
-import Notification from '../../components/User/Notification';
 import Dataset from '../../components/User/Dataset';
 import Schedule from '../../components/User/Schedule';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -22,7 +21,6 @@ const StudentDetail: React.FC = () => {
     const tabs: string[] = [
         'About',
         'Schedule',
-        'Notification',
         'Dataset'
     ];
 
@@ -141,8 +139,6 @@ const StudentDetail: React.FC = () => {
                 return <About studentData={studentData} />;
             case 'Schedule':
                 return <Schedule studentData={studentData} />;
-            case 'Notification':
-                return <Notification />;
             case 'Dataset':
                 return <Dataset studentData={studentData} />;
             default:

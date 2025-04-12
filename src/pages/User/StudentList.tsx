@@ -7,13 +7,21 @@ import AddStudentModal from '../../components/User/AddStudentModal';
 
 const StudentList = () => {
     const [students, setStudents] = useState<StudentRead[]>([]);
+    const [filteredStudents, setFilteredStudents] = useState<StudentRead[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [searchTerm, setSearchTerm] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
     useEffect(() => {
         loadStudents();
     }, []);
+
+    useEffect(() => {
+        // Apply filters whenever students, searchTerm, or statusFilter changes
+        applyFilters();
+    }, [students, searchTerm, statusFilter]);
 
     const loadStudents = async () => {
         try {
@@ -21,6 +29,7 @@ const StudentList = () => {
             setError(null);
             const data = await getStudents();
             setStudents(data);
+            setFilteredStudents(data);
         } catch (err) {
             setError('Failed to load students');
             console.error(err);
@@ -29,24 +38,44 @@ const StudentList = () => {
         }
     };
 
+    const applyFilters = () => {
+        let result = [...students];
+
+        // Apply search filter (search by NIM)
+        if (searchTerm.trim() !== '') {
+            result = result.filter(student =>
+                student.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                student.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            const isApproved = statusFilter === 'approved';
+            result = result.filter(student => student.is_approved === isApproved);
+        }
+
+        setFilteredStudents(result);
+    };
+
     const handleDelete = async (studentId: number) => {
         const result = await Swal.fire({
-            title: 'Are you sure?',
-            text: "You won't be able to revert this!",
+            title: 'Apakah anda yakin?',
+            text: "Anda tidak dapat mengembalikan ini!",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Delete',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Hapus',
+            cancelButtonText: 'Batal'
         });
 
         if (result.isConfirmed) {
             try {
                 await deleteStudent(studentId);
                 await Swal.fire({
-                    title: 'Deleted!',
-                    text: 'Student data has been deleted.',
+                    title: 'Terhapus!',
+                    text: 'Data mahasiswa berhasil dihapus.',
                     icon: 'success',
                     confirmButtonColor: '#4CAF50'
                 });
@@ -64,10 +93,6 @@ const StudentList = () => {
         }
     };
 
-    // Helper function to convert student.is_approved to a status string
-    const getStatusText = (isApproved: boolean): 'Approved' | 'Pending' => {
-        return isApproved ? 'Approved' : 'Pending';
-    };
 
     if (loading) {
         return (
@@ -78,40 +103,77 @@ const StudentList = () => {
     }
 
     if (error) {
-        return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
+        return <div className="p-4 bg-red-100 text-red-700 rounded-md dark:bg-red-900 dark:text-red-200">{error}</div>;
     }
 
     return (
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Students</h2>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-                >
-                    Add New Student
-                </button>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Mahasiswa</h2>
+                <div className="flex items-center space-x-2">
+                    {/* Search Input with Icon */}
+                    <div className="relative w-48 md:w-60">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search by NIM..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="p-2 pl-10 w-full text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="p-2 w-32 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="approved">Approved</option>
+                        <option value="pending">Pending</option>
+                    </select>
+
+                    {/* Add Button */}
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm flex items-center transition-colors duration-200 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    >
+                        <svg className="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Tambah Mahasiswa
+                    </button>
+                </div>
             </div>
 
             {/* Add Student Modal */}
             <AddStudentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={loadStudents} 
+                onSuccess={loadStudents}
             />
 
-            {students.length === 0 ? (
-                <p>No students found.</p>
+            {filteredStudents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-300">No students found.</p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {students.map((student) => (
+                    {filteredStudents.map((student) => (
                         <ProfileCard
                             key={student.student_id}
                             id={student.student_id}
                             name={student.full_name}
                             email={student.username}
-                            description={`${student.major_name} - Year ${student.year}`}
-                            status={getStatusText(student.is_approved)}
+                            description={
+                                <>
+                                    <span className="font-medium">NIM:</span> {student.nim}<br />
+                                    <span>{student.major_name} - Year {student.year}</span>
+                                </>
+                            }
                             onDelete={() => handleDelete(student.student_id)}
                             type='student'
                         />

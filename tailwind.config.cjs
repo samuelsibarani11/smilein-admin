@@ -17,7 +17,7 @@ module.exports = {
     },
     extend: {
       colors: {
-        primaryGreen:'#2C7139',
+        primaryGreen: '#2C7139',
         current: 'currentColor',
         transparent: 'transparent',
         white: '#FFFFFF',
@@ -251,12 +251,22 @@ module.exports = {
         2: '0px 1px 4px rgba(0, 0, 0, 0.12)',
       },
       keyframes: {
+        'wave-shimmer': {
+          '0%': {
+            transform: 'translateX(-100%)',
+          },
+          '100%': {
+            transform: 'translateX(100%)',
+          },
+        },
         rotating: {
           '0%, 100%': { transform: 'rotate(360deg)' },
           '50%': { transform: 'rotate(0deg)' },
         },
+
       },
       animation: {
+        'wave-shimmer': 'wave-shimmer 1.5s infinite',
         'ping-once': 'ping 5s cubic-bezier(0, 0, 0.2, 1)',
         rotating: 'rotating 30s linear infinite',
         'spin-1.5': 'spin 1.5s linear infinite',

@@ -12,11 +12,13 @@ interface AddStudentModalProps {
 const AddStudentModal = ({ isOpen, onClose, onSuccess }: AddStudentModalProps) => {
   const currentYear = new Date().getFullYear();
   const defaultYear = `${currentYear}/${currentYear + 1}`;
+  const defaultMajor = "D3 Teknologi Informasi"; // Default major value
 
   const [formData, setFormData] = useState<StudentCreate>({
     username: '',
     full_name: '',
-    major_name: '',
+    major_name: defaultMajor, // Set the default major
+    nim: '',
     year: defaultYear,
     password: '',
     is_approved: false
@@ -36,9 +38,15 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }: AddStudentModalProps) =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Ensure major is always set to the default value before submission
+    const submissionData = {
+      ...formData,
+      major_name: defaultMajor
+    };
+
     try {
       setLoading(true);
-      await createStudent(formData);
+      await createStudent(submissionData);
       Swal.fire({
         title: 'Success!',
         text: 'Student created successfully',
@@ -50,7 +58,8 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }: AddStudentModalProps) =
       setFormData({
         username: '',
         full_name: '',
-        major_name: '',
+        major_name: defaultMajor, // Reset with default major
+        nim: '',
         year: defaultYear,
         password: '',
         is_approved: false
@@ -118,16 +127,30 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }: AddStudentModalProps) =
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                NIM
+              </label>
+              <input
+                type="text"
+                name="nim"
+                value={formData.nim}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Major
               </label>
               <input
                 type="text"
                 name="major_name"
-                value={formData.major_name}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                value={defaultMajor}
+                disabled
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed"
               />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This field is locked to "D3 Teknologi Informasi"</p>
             </div>
 
             <div>
@@ -198,4 +221,4 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }: AddStudentModalProps) =
   );
 };
 
-export default AddStudentModal;
+export default AddStudentModal; 

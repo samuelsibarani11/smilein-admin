@@ -5,6 +5,7 @@ interface PaginatedTableProps extends TableProps {
     itemsPerPage?: number;
     searchable?: boolean;
     filterable?: boolean;
+    disableBuiltInFilter?: boolean; // New prop to disable built-in filtering
     searchFields?: string[];
     onPreview?: (item: any) => void;
     renderActions?: (row: any) => React.ReactNode;
@@ -44,6 +45,7 @@ const DynamicTable = ({
     itemsPerPage = 10,
     searchable = true,
     filterable = true,
+    disableBuiltInFilter = false, // Default to false to maintain backward compatibility
     searchFields
 }: PaginatedTableProps) => {
     const [currentPage, setCurrentPage] = useState(1);
@@ -56,15 +58,18 @@ const DynamicTable = ({
     const filteredData = useMemo(() => {
         let result = [...data];
 
-        // Apply filters
-        if (filters.length > 0) {
-            result = result.filter(item =>
-                filters.every(filter =>
-                    String(item[filter.field])
-                        .toLowerCase()
-                        .includes(filter.value.toLowerCase())
-                )
-            );
+        // Only apply built-in filters if not disabled
+        if (!disableBuiltInFilter) {
+            // Apply filters
+            if (filters.length > 0) {
+                result = result.filter(item =>
+                    filters.every(filter =>
+                        String(item[filter.field])
+                            .toLowerCase()
+                            .includes(filter.value.toLowerCase())
+                    )
+                );
+            }
         }
 
         // Apply search
@@ -80,7 +85,7 @@ const DynamicTable = ({
         }
 
         return result;
-    }, [data, searchTerm, filters]);
+    }, [data, searchTerm, filters, disableBuiltInFilter]);
 
     // Calculate total pages
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -207,7 +212,7 @@ const DynamicTable = ({
                         </div>
                     )}
 
-                    {filterable && (
+                    {filterable && !disableBuiltInFilter && (
                         <div className="relative w-full sm:w-auto">
                             <button
                                 onClick={() => {

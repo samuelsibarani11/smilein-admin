@@ -28,13 +28,7 @@ const Schedules: React.FC = () => {
         try {
             setLoading(true);
             const data = await scheduleApi.getSchedules();
-
-            const enhancedData = data.map(schedule => ({
-                ...schedule,
-                course_name: schedule.course?.course_name || 'N/A'
-            }));
-
-            setSchedules(enhancedData);
+            setSchedules(data);
             setError(null);
         } catch (err) {
             console.error('Failed to fetch schedules:', err);
@@ -132,6 +126,17 @@ const Schedules: React.FC = () => {
             cell: (item: ScheduleRead) => item.course?.course_name || 'N/A'
         },
         {
+            header: 'Dosen',
+            accessor: 'instructor.full_name',
+            minWidth: '200px',
+            cell: (item: ScheduleRead) => item.instructor?.full_name || 'N/A'
+        },
+        {
+            header: 'Bab/Materi',
+            accessor: 'chapter',
+            minWidth: '150px',
+        },
+        {
             header: 'Hari',
             accessor: 'day_of_week',
             minWidth: '100px',
@@ -194,7 +199,7 @@ const Schedules: React.FC = () => {
                 className="shadow-sm"
                 searchable
                 filterable
-                searchFields={['course_name', 'room']}
+                searchFields={['course.course_name', 'instructor.full_name', 'room', 'chapter']}
                 renderActions={(schedule: ScheduleRead) => (
                     <div className="flex space-x-2">
                         <button

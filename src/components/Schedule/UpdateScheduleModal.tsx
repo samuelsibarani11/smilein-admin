@@ -4,7 +4,6 @@ import { ScheduleRead, ScheduleUpdate } from '../../types/schedule';
 import Swal from 'sweetalert2';
 import * as courseApi from '../../api/courseApi';
 import * as instructorApi from '../../api/instructorApi';
-import * as studentApi from '../../api/studentApi';
 
 const DAYS_OF_WEEK = [
     'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
@@ -27,11 +26,6 @@ interface Instructor {
     full_name: string;
 }
 
-interface Student {
-    student_id: number;
-    full_name: string;
-}
-
 const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
     isOpen,
     onClose,
@@ -40,12 +34,11 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
 }) => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [instructors, setInstructors] = useState<Instructor[]>([]);
-    const [students, setStudents] = useState<Student[]>([]);
 
     const courseIdRef = useRef<HTMLSelectElement>(null);
     const instructorIdRef = useRef<HTMLSelectElement>(null);
-    const studentIdRef = useRef<HTMLSelectElement>(null);
     const roomRef = useRef<HTMLInputElement>(null);
+    const chapterRef = useRef<HTMLInputElement>(null);
     const startTimeRef = useRef<HTMLInputElement>(null);
     const endTimeRef = useRef<HTMLInputElement>(null);
     const dayOfWeekRef = useRef<HTMLSelectElement>(null);
@@ -54,7 +47,6 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
         if (isOpen) {
             fetchCourses();
             fetchInstructors();
-            fetchStudents();
         }
     }, [isOpen]);
 
@@ -70,10 +62,10 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                 }
             };
 
-            safeSetValue(courseIdRef, currentSchedule.course_id);
-            safeSetValue(instructorIdRef, currentSchedule.instructor_id);
-            safeSetValue(studentIdRef, currentSchedule.student_id);
+            safeSetValue(courseIdRef, currentSchedule.course?.course_id);
+            safeSetValue(instructorIdRef, currentSchedule.instructor?.instructor_id);
             safeSetValue(roomRef, currentSchedule.room);
+            safeSetValue(chapterRef, currentSchedule.chapter);
             safeSetValue(startTimeRef, currentSchedule.start_time);
             safeSetValue(endTimeRef, currentSchedule.end_time);
             safeSetValue(dayOfWeekRef, currentSchedule.day_of_week);
@@ -108,20 +100,6 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
         }
     };
 
-    const fetchStudents = async () => {
-        try {
-            const fetchedStudents = await studentApi.getStudents();
-            setStudents(fetchedStudents);
-        } catch (error) {
-            console.error('Failed to fetch students:', error);
-            Swal.fire({
-                title: 'Error',
-                text: 'Gagal memuat daftar mahasiswa',
-                icon: 'error'
-            });
-        }
-    };
-
     const showAlert = (title: string, message: string, icon: 'success' | 'error' | 'warning'): void => {
         Swal.fire({
             title: title,
@@ -143,28 +121,26 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
 
         const courseId = courseIdRef.current?.value;
         const instructorId = instructorIdRef.current?.value;
-        const studentId = studentIdRef.current?.value;
         const room = roomRef.current?.value;
+        const chapter = chapterRef.current?.value;
         const startTime = startTimeRef.current?.value;
         const endTime = endTimeRef.current?.value;
         const dayOfWeek = dayOfWeekRef.current?.value;
 
-        const updateData: ScheduleUpdate = {
-            student_id: 0
-        };
+        const updateData: ScheduleUpdate = {};
 
         // Only add fields that have changed
-        if (courseId && parseInt(courseId) !== currentSchedule.course_id) {
+        if (courseId && parseInt(courseId) !== currentSchedule.course?.course_id) {
             updateData.course_id = parseInt(courseId);
         }
-        if (instructorId && parseInt(instructorId) !== currentSchedule.instructor_id) {
+        if (instructorId && parseInt(instructorId) !== currentSchedule.instructor?.instructor_id) {
             updateData.instructor_id = parseInt(instructorId);
-        }
-        if (studentId && parseInt(studentId) !== currentSchedule.student_id) {
-            updateData.student_id = parseInt(studentId);
         }
         if (room && room !== currentSchedule.room) {
             updateData.room = room;
+        }
+        if (chapter && chapter !== currentSchedule.chapter) {
+            updateData.chapter = chapter;
         }
         if (startTime && startTime !== currentSchedule.start_time) {
             updateData.start_time = startTime;
@@ -232,27 +208,20 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                     </select>
                 </div>
                 <div className="col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Mahasiswa</label>
-                    <select
-                        ref={studentIdRef}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        required
-                    >
-                        <option value="">Pilih Mahasiswa</option>
-                        {students.map((student) => (
-                            <option key={student.student_id} value={student.student_id}>
-                                {student.full_name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ruangan</label>
                     <input
                         ref={roomRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         placeholder="Masukkan ruangan"
                         required
+                    />
+                </div>
+                <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Bab/Materi</label>
+                    <input
+                        ref={chapterRef}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
+                        placeholder="Masukkan bab/materi (opsional)"
                     />
                 </div>
                 <div className="col-span-1">

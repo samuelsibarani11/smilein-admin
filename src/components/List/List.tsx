@@ -5,11 +5,11 @@ interface ProfileCardProps {
   id: number;
   name: string;
   email: string;
-  description: any;
+  description: React.ReactNode; // Changed to ReactNode to accept JSX
   status?: 'Approved' | 'Pending' | 'Active' | 'Inactive';
   dob?: string;
   onDelete?: () => void;
-  type: 'student' | 'instructor'; // New prop to determine navigation
+  type: 'student' | 'instructor'; // Determines navigation
 }
 
 const ProfileCard: React.FC<ProfileCardProps> = ({
@@ -17,8 +17,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   name,
   email,
   description,
-  status = 'Pending',
-  type, // Added type prop
+  type,
   onDelete
 }) => {
   const navigate = useNavigate();
@@ -31,15 +30,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       .toUpperCase();
   };
 
-  const getStatusColor = (status: ProfileCardProps['status']) => {
-    const colors = {
-      'Approved': 'bg-blue-500',
-      'Pending': 'bg-green-500',
-      'Active': 'bg-green-500',
-      'Inactive': 'bg-green-500',
-    };
-    return colors[status || 'Approved' || 'Active'];
-  };
 
   const handleClick = () => {
     // Dynamic navigation based on the type prop
@@ -66,7 +56,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       onClick={handleClick}
       className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 flex items-start space-x-4 transition-colors duration-200 cursor-pointer hover:shadow-lg"
     >
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white ${getStatusColor(status)}`}>
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white bg-blue-600`}>
         {getInitials(name)}
       </div>
       <div className="flex-1">
@@ -74,7 +64,9 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
           <div>
             <h3 className="font-medium text-gray-900 dark:text-white">{name}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">{email}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {description}
+            </div>
           </div>
           {onDelete && (
             <button
