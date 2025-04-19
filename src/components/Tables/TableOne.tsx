@@ -1,107 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { getAttendances } from '../../api/attendanceApi';
+import { AttendanceWithScheduleRead } from '../../types/attendance';
+import Loader from '../../common/Loader';
 
-// Sample course attendance data - replace with your actual data
-const courseData = [
-  {
-    code: 'CS101',
-    name: 'Introduction to Computer Science',
-    totalStudents: 120,
-    attendedStudents: 115,
-    attendance: 95.8,
-  },
-  {
-    code: 'MTH201',
-    name: 'Calculus II',
-    totalStudents: 85,
-    attendedStudents: 79,
-    attendance: 92.9,
-  },
-  {
-    code: 'ENG104',
-    name: 'Academic Writing',
-    totalStudents: 95,
-    attendedStudents: 87,
-    attendance: 91.6,
-  },
-  {
-    code: 'PHY102',
-    name: 'Physics for Engineers',
-    totalStudents: 75,
-    attendedStudents: 68,
-    attendance: 90.7,
-  },
-  {
-    code: 'CHM101',
-    name: 'General Chemistry',
-    totalStudents: 110,
-    attendedStudents: 98,
-    attendance: 89.1,
-  },
-  {
-    code: 'BIO130',
-    name: 'Molecular Biology',
-    totalStudents: 65,
-    attendedStudents: 57,
-    attendance: 87.7,
-  },
-  {
-    code: 'ECO201',
-    name: 'Microeconomics',
-    totalStudents: 100,
-    attendedStudents: 86,
-    attendance: 86.0,
-  },
-  {
-    code: 'SOC101',
-    name: 'Introduction to Sociology',
-    totalStudents: 130,
-    attendedStudents: 111,
-    attendance: 85.4,
-  },
-  {
-    code: 'PSY102',
-    name: 'Developmental Psychology',
-    totalStudents: 80,
-    attendedStudents: 67,
-    attendance: 83.8,
-  },
-  {
-    code: 'HIS110',
-    name: 'World History',
-    totalStudents: 70,
-    attendedStudents: 58,
-    attendance: 82.9,
-  },
-  {
-    code: 'ART105',
-    name: 'Visual Arts',
-    totalStudents: 60,
-    attendedStudents: 49,
-    attendance: 81.7,
-  },
-  {
-    code: 'GEO120',
-    name: 'Human Geography',
-    totalStudents: 75,
-    attendedStudents: 60,
-    attendance: 80.0,
-  },
-];
+interface CourseAttendance {
+  code: string;
+  name: string;
+  totalStudents: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  attendancePercentage: number;
+}
 
-// Sort data by attendance percentage (highest to lowest)
-const sortedCourseData = [...courseData].sort((a, b) => b.attendance - a.attendance);
-
-const TableOne = () => {
-  const [currentPage, setCurrentPage] = useState(1);
+const TableOne: React.FC = () => {
+  const [attendanceData, setAttendanceData] = useState<AttendanceWithScheduleRead[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 5;
 
-  // Calculate the current items to display
+  // Fetch attendance data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await getAttendances(0, 1000); // Get a large batch of attendance records
+        setAttendanceData(data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching attendance data:', err);
+        setError('Gagal memuat data kehadiran. Silakan coba lagi nanti.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Process attendance data to get course statistics
+  const courseAttendanceStats = useMemo(() => {
+    // Create a map to group attendance by course
+    const courseMap = new Map<string, {
+      code: string;
+      name: string;
+      records: AttendanceWithScheduleRead[];
+    }>();
+
+    // Group attendance records by course
+    attendanceData.forEach(record => {
+      if (!record.schedule?.course) return;
+
+      // Convert course_id to string to use as map key
+      const courseCode = record.schedule.course.course_id ?
+        record.schedule.course.course_id.toString() : 'UNKNOWN';
+      const courseName = record.schedule.course.course_name || 'Unknown Course';
+
+      if (!courseMap.has(courseCode)) {
+        courseMap.set(courseCode, {
+          code: courseCode,
+          name: courseName,
+          records: []
+        });
+      }
+
+      courseMap.get(courseCode)?.records.push(record);
+    });
+
+    // Calculate statistics for each course
+    const stats: CourseAttendance[] = [];
+
+    courseMap.forEach((course, code) => {
+      const records = course.records;
+      const uniqueStudentIds = new Set(records.map(r => r.student_id));
+      const totalStudents = uniqueStudentIds.size;
+
+      // Count statuses
+      let presentCount = 0;
+      let lateCount = 0;
+      let absentCount = 0;
+
+      records.forEach(record => {
+        const status = record.status?.toUpperCase();
+        if (status === 'PRESENT') presentCount++;
+        else if (status === 'LATE') lateCount++;
+        else if (status === 'ABSENT') absentCount++;
+      });
+
+      // Calculate attendance percentage (present + late are considered attended)
+      const attendedCount = presentCount + lateCount;
+      const totalRecords = presentCount + lateCount + absentCount;
+      const attendancePercentage = totalRecords > 0
+        ? (attendedCount / totalRecords) * 100
+        : 0;
+
+      stats.push({
+        code,
+        name: course.name,
+        totalStudents,
+        presentCount,
+        lateCount,
+        absentCount,
+        attendancePercentage
+      });
+    });
+
+    // Sort by attendance percentage (highest to lowest)
+    return stats.sort((a, b) => b.attendancePercentage - a.attendancePercentage);
+  }, [attendanceData]);
+
+  // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = sortedCourseData.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Calculate total pages
-  const totalPages = Math.ceil(sortedCourseData.length / itemsPerPage);
+  const currentItems = courseAttendanceStats.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.max(1, Math.ceil(courseAttendanceStats.length / itemsPerPage));
 
   // Handle pagination navigation
   const goToNextPage = () => {
@@ -112,6 +124,24 @@ const TableOne = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
 
+  if (loading) return <Loader />;
+
+  if (error) {
+    return (
+      <div className="rounded-sm border border-stroke bg-white p-5 shadow-default dark:border-strokedark dark:bg-boxdark">
+        <div className="text-center text-meta-1">{error}</div>
+      </div>
+    );
+  }
+
+  if (courseAttendanceStats.length === 0) {
+    return (
+      <div className="rounded-sm border border-stroke bg-white p-5 shadow-default dark:border-strokedark dark:bg-boxdark">
+        <div className="text-center dark:text-white">Tidak ada data kehadiran tersedia.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1 h-full flex flex-col">
       <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
@@ -119,7 +149,7 @@ const TableOne = () => {
       </h4>
 
       <div className="flex flex-col flex-grow">
-        <div className="grid grid-cols-5 rounded-sm bg-gray-2 dark:bg-meta-4">
+        <div className="grid grid-cols-6 rounded-sm bg-gray-2 dark:bg-meta-4">
           <div className="p-2.5 xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
               Kode
@@ -132,62 +162,87 @@ const TableOne = () => {
           </div>
           <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Total Mahasiswa
+              Mahasiswa
             </h5>
           </div>
           <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Mahasiswa Hadir
+              Hadir/Terlambat/Absen
             </h5>
           </div>
           <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Presentasi Kehadiran
+              Kehadiran
+            </h5>
+          </div>
+          <div className="p-2.5 text-center xl:p-5">
+            <h5 className="text-sm font-medium uppercase xsm:text-base">
+              Persentase
             </h5>
           </div>
         </div>
 
         <div className="flex-grow">
-          {currentItems.map((course, key) => (
-            <div
-              className={`grid grid-cols-5 ${key === currentItems.length - 1
-                ? ''
-                : 'border-b border-stroke dark:border-strokedark'
-                }`}
-              key={key}
-            >
-              <div className="flex items-center p-2.5 xl:p-5">
-                <p className="text-black dark:text-white">
-                  {course.code}
-                </p>
-              </div>
+          {currentItems.map((course, key) => {
+            const totalCount = course.presentCount + course.lateCount + course.absentCount;
 
-              <div className="flex items-center p-2.5 xl:p-5">
-                <p className="text-black dark:text-white">{course.name}</p>
-              </div>
+            return (
+              <div
+                className={`grid grid-cols-6 ${key === currentItems.length - 1
+                    ? ''
+                    : 'border-b border-stroke dark:border-strokedark'
+                  }`}
+                key={key}
+              >
+                <div className="flex items-center p-2.5 xl:p-5">
+                  <p className="text-black dark:text-white">
+                    {course.code}
+                  </p>
+                </div>
 
-              <div className="flex items-center justify-center p-2.5 xl:p-5">
-                <p className="text-black dark:text-white">{course.totalStudents}</p>
-              </div>
+                <div className="flex items-center p-2.5 xl:p-5">
+                  <p className="text-black dark:text-white">{course.name}</p>
+                </div>
 
-              <div className="flex items-center justify-center p-2.5 xl:p-5">
-                <p className="text-black dark:text-white">{course.attendedStudents}</p>
-              </div>
+                <div className="flex items-center justify-center p-2.5 xl:p-5">
+                  <p className="text-black dark:text-white">{course.totalStudents}</p>
+                </div>
 
-              <div className="flex items-center justify-center p-2.5 xl:p-5">
-                <p className={`${course.attendance >= 90 ? 'text-meta-3' :
-                  course.attendance >= 80 ? 'text-meta-5' : 'text-meta-1'}`}>
-                  {course.attendance.toFixed(1)}%
-                </p>
+                <div className="flex items-center justify-center p-2.5 xl:p-5">
+                  <p className="text-black dark:text-white">
+                    <span className="text-meta-3">{course.presentCount}</span>
+                    /
+                    <span className="text-meta-5">{course.lateCount}</span>
+                    /
+                    <span className="text-meta-1">{course.absentCount}</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-center p-2.5 xl:p-5">
+                  <p className="text-black dark:text-white">
+                    {course.presentCount + course.lateCount}/{totalCount}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-center p-2.5 xl:p-5">
+                  <p className={`${course.attendancePercentage >= 90
+                      ? 'text-meta-3'
+                      : course.attendancePercentage >= 80
+                        ? 'text-meta-5'
+                        : 'text-meta-1'
+                    }`}>
+                    {course.attendancePercentage.toFixed(1)}%
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Pagination */}
         <div className="flex justify-between items-center mt-4 mb-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedCourseData.length)} dari {sortedCourseData.length} mata kuliah
+            Menampilkan {courseAttendanceStats.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, courseAttendanceStats.length)} dari {courseAttendanceStats.length} mata kuliah
           </div>
           <div className="flex space-x-2">
             <button

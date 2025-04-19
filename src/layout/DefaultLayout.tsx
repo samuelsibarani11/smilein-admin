@@ -1,8 +1,13 @@
-import React, { useState, ReactNode } from 'react';
-import Header from '../components/Header/index';
-import Sidebar from '../components/Sidebar/index';
+import { useState, ReactNode } from 'react';
+import Header from '../components/Header';
+import Sidebar from '../components/Sidebar';
 
-const DefaultLayout: React.FC<{ children: ReactNode }> = ({ children }) => {
+interface DefaultLayoutProps {
+  children: ReactNode;
+  userType?: string | null;
+}
+
+const DefaultLayout = ({ children, userType }: DefaultLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -10,7 +15,11 @@ const DefaultLayout: React.FC<{ children: ReactNode }> = ({ children }) => {
       {/* <!-- ===== Page Wrapper Start ===== --> */}
       <div className="flex h-screen overflow-hidden">
         {/* <!-- ===== Sidebar Start ===== --> */}
-        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Sidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          userType={userType}  // Pass userType to Sidebar
+        />
         {/* <!-- ===== Sidebar End ===== --> */}
 
         {/* <!-- ===== Content Area Start ===== --> */}
@@ -22,7 +31,6 @@ const DefaultLayout: React.FC<{ children: ReactNode }> = ({ children }) => {
           {/* <!-- ===== Main Content Start ===== --> */}
           <main>
             <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-              
               {children}
             </div>
           </main>

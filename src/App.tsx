@@ -17,14 +17,15 @@ import CourseList from './pages/Academic/CourseList';
 import Schedules from './pages/Schedule/Schedules';
 import InstructorList from './pages/Instructor/InstructorList';
 import InstructorDetail from './pages/Instructor/InstructorDetail';
-import Swal from 'sweetalert2'; // Make sure to import Swal
-
+import Swal from 'sweetalert2';
+import Room from './pages/Room/Rooms';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [_, setIsAuthenticated] = useState<boolean>(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const userType = localStorage.getItem('userType');
 
   const isTokenExpired = () => {
     const token = localStorage.getItem('token');
@@ -63,7 +64,6 @@ function App() {
     }
   }, [pathname, navigate]);
 
-
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
@@ -77,10 +77,7 @@ function App() {
     navigate('/');
   };
 
-
-
-  const aktif = !!localStorage.getItem('token')
-  console.log(localStorage.getItem('userType'))
+  const aktif = !!localStorage.getItem('token');
 
   return loading ? (
     <Loader />
@@ -106,136 +103,121 @@ function App() {
       ) : (
         <Route
           path="/*"
-          element={<DefaultLayout>
-            <Routes>
+          element={
+            // Pass the userType to DefaultLayout
+            <DefaultLayout userType={userType}>
+              <Routes>
+                {/* Dashboard Routes  */}
+                <Route
+                  index
+                  element={
+                    <>
+                      <PageTitle title="Dasbor | SmileIn" />
+                      <Dashboard />
+                    </>
+                  }
+                />
 
-              {/* Dashboard Routes  */}
-              <Route
-                index
-                element={
+                {/* Student Routes */}
+                <Route
+                  path='/student/student-list'
+                  element={
+                    <>
+                      <PageTitle title="Daftar Mahasiswa | SmileIn" />
+                      <StudentList />
+                    </>
+                  }
+                />
+                <Route path="/student/student-list/:id" element={
                   <>
-                    <PageTitle title="Dasbor | SmileIn" />
-                    <Dashboard />
+                    <PageTitle title="Detail Mahasiswa | SmileIn" />
+                    <StudentDetail />
                   </>
-                }
-              />
+                } />
 
-              {/* Student Routes */}
-              <Route
-                path='/student/student-list'
-                element={
+                {/* Course Routes */}
+                <Route
+                  path='/instructor/instructor-list'
+                  element={
+                    <>
+                      <PageTitle title="Daftar Dosen | SmileIn" />
+                      <InstructorList />
+                    </>
+                  }
+                />
+                <Route path="/instructor/instructor-list/:id" element={
                   <>
-                    <PageTitle title="Daftar Mahasiswa | SmileIn" />
-                    <StudentList />
+                    <PageTitle title="Detail Dosen | SmileIn" />
+                    <InstructorDetail />
                   </>
-                }
-              />
-              <Route path="/student/student-list/:id" element={
-                <>
-                  <PageTitle title="Detail Mahasiswa | SmileIn" />
-                  <StudentDetail />
-                </>
-              } />
+                } />
 
-              {/* Course Routes */}
-              <Route
-                path='/instructor/instructor-list'
-                element={
-                  <>
-                    <PageTitle title="Daftar Dosen | SmileIn" />
-                    <InstructorList />
-                  </>
-                }
-              />
-              <Route path="/instructor/instructor-list/:id" element={
-                <>
-                  <InstructorDetail />
-                  <PageTitle title="Detail Dosen | SmileIn" />
-                </>
-              } />
+                {/* Academic Routes */}
+                <Route
+                  path='/course/course-list'
+                  element={
+                    <>
+                      <PageTitle title="Mata Kuliah | SmileIn" />
+                      <CourseList />
+                    </>
+                  }
+                />
 
-              {/* Academic Routes */}
-              <Route
-                path='/course/course-list'
-                element={
-                  <>
-                    <PageTitle title="Mata Kuliah | SmileIn" />
-                    <CourseList />
-                  </>
-                }
-              />
+                {/* Schedules */}
+                <Route
+                  path='/schedule/schedules'
+                  element={
+                    <>
+                      <PageTitle title="Jadwal | SmileIn" />
+                      <Schedules />
+                    </>
+                  }
+                />
 
+                {/* Attendance */}
+                <Route
+                  path='/attendance/attendance-list'
+                  element={
+                    <>
+                      <PageTitle title="Attendance History | SmileIn" />
+                      <AttendanceHistory />
+                    </>
+                  }
+                />
 
-              {/* Schedules */}
-              <Route
-                path='/schedule/schedules'
-                element={
-                  <>
-                    <PageTitle title="Jadwal | SmileIn" />
-                    <Schedules />
-                  </>
-                }
-              />
+                {/* Room */}
+                <Route
+                  path='/room/room-list'
+                  element={
+                    <>
+                      <PageTitle title="Room | SmileIn" />
+                      <Room />
+                    </>
+                  }
+                />
+                
+                <Route
+                  path="/profile"
+                  element={
+                    <>
+                      <PageTitle title="Profile | SmileIn" />
+                      <Profile />
+                    </>
+                  }
+                />
 
-
-              {/* Attendance */}
-              <Route
-                path='/attendance/attendance-list'
-                element={
-                  <>
-                    <PageTitle title="Attendance History | SmileIn" />
-                    <AttendanceHistory />
-                  </>
-                }
-              />
-
-
-              
-              {/* Settings */}
-              <Route
-                path='/settings/system-settings'
-                element={
-                  <>
-                    <PageTitle title="System Settings | SmileIn" />
-                    <SystemSettings />
-                  </>
-                }
-              />
-              <Route
-                path='/settings/location-settings'
-                element={
-                  <>
-                    <PageTitle title="Location Settings | SmileIn" />
-                    <LocationSettings />
-                  </>
-                }
-              />
-              
-
-
-
-              <Route
-                path="/profile"
-                element={
-                  <>
-                    <PageTitle title="Profile | SmileIn" />
-                    <Profile />
-                  </>
-                }
-              />
-
-              <Route
-                path="/settings"
-                element={
-                  <>
-                    <PageTitle title="Settings | SmileIn" />
-                    <Settings />
-                  </>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </DefaultLayout>
+                <Route
+                  path="/settings"
+                  element={
+                    <>
+                      <PageTitle title="Settings | SmileIn" />
+                      <Settings />
+                    </>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </DefaultLayout>
           }
         />
       )}

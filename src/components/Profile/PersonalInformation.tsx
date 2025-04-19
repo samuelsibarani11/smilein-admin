@@ -1,11 +1,13 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { AdminRead, AdminUpdate } from '../../types/admin';
 import { updateAdmin } from '../../api/adminApi';
+import { updateInstructor } from '../../api/instructorApi';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
 interface PersonalInformationProps {
     initialData?: AdminRead;
+    userType: string | null;
 }
 
 const PersonalInformation: React.FC<PersonalInformationProps> = ({
@@ -15,7 +17,8 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
         username: '',
         created_at: '',
         updated_at: ''
-    }
+    },
+    userType
 }) => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState<AdminUpdate>({
@@ -74,25 +77,33 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            // Assuming the admin_id is available in the initial data
-            if (initialData.admin_id) {
-                await updateAdmin(initialData.admin_id, formData);
-
-                // Remove authentication token from localStorage
-                localStorage.removeItem('token');
-
-                // Show success message using SweetAlert2
-                Swal.fire({
-                    title: 'Sukses!',
-                    text: 'Profile berhasil diperbarui! Anda perlu login kembali dengan credential yang telah diperbarui.',
-                    icon: 'success',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    // Redirect to sign-in page
-                    navigate('/signin');
-                });
+            if (!initialData.admin_id) {
+                throw new Error("User ID is missing");
             }
+
+            // Determine which API to use based on user type
+            if (userType === "admin") {
+                await updateAdmin(initialData.admin_id, formData);
+            } else if (userType === "instructor") {
+                await updateInstructor(initialData.admin_id, formData);
+            } else {
+                throw new Error("Unknown user type");
+            }
+
+            // Remove authentication token from localStorage
+            localStorage.removeItem('token');
+
+            // Show success message using SweetAlert2
+            Swal.fire({
+                title: 'Sukses!',
+                text: 'Profile berhasil diperbarui! Anda perlu login kembali dengan credential yang telah diperbarui.',
+                icon: 'success',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Redirect to sign-in page
+                navigate('/signin');
+            });
         } catch (error: any) {
             console.error('Error updating profile', error);
 

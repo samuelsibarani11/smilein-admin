@@ -4,9 +4,10 @@ import { ScheduleRead, ScheduleUpdate } from '../../types/schedule';
 import Swal from 'sweetalert2';
 import * as courseApi from '../../api/courseApi';
 import * as instructorApi from '../../api/instructorApi';
+import * as roomApi from '../../api/roomApi';
+import { Room } from '../../types/room';
 
-// Perbaikan: Sesuaikan dengan urutan standar (0 = Minggu, 1 = Senin, dst)
-// Perbaikan: Sesuaikan nilai hari untuk dimulai dari 1 bukan 0
+// Days of week values from 1 (Monday) to 7 (Sunday)
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Senin' },
     { value: 2, label: 'Selasa' },
@@ -42,69 +43,115 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
 }) => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [instructors, setInstructors] = useState<Instructor[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
 
     const courseIdRef = useRef<HTMLSelectElement>(null);
     const instructorIdRef = useRef<HTMLSelectElement>(null);
-    const roomRef = useRef<HTMLInputElement>(null);
+    const roomIdRef = useRef<HTMLSelectElement>(null);
     const chapterRef = useRef<HTMLInputElement>(null);
     const startTimeRef = useRef<HTMLInputElement>(null);
     const endTimeRef = useRef<HTMLInputElement>(null);
     const dayOfWeekRef = useRef<HTMLSelectElement>(null);
+    const scheduleDateRef = useRef<HTMLInputElement>(null); // Added reference for schedule_date field
 
     useEffect(() => {
         if (isOpen) {
             fetchCourses();
             fetchInstructors();
+            fetchRooms();
         }
     }, [isOpen]);
 
+    // Set form values when the current schedule changes
     useEffect(() => {
-        // Add comprehensive null checks
         if (currentSchedule && isOpen) {
-            const safeSetValue = (
-                ref: React.RefObject<HTMLSelectElement | HTMLInputElement>,
-                value: string | number | undefined
-            ) => {
-                if (ref.current && value !== undefined) {
-                    ref.current.value = value.toString();
+            // Set form values after a short delay to ensure refs are ready
+            setTimeout(() => {
+                if (courseIdRef.current && currentSchedule.course) {
+                    courseIdRef.current.value = currentSchedule.course.course_id.toString();
                 }
-            };
-
-            safeSetValue(courseIdRef, currentSchedule.course?.course_id);
-            safeSetValue(instructorIdRef, currentSchedule.instructor?.instructor_id);
-            safeSetValue(roomRef, currentSchedule.room);
-            safeSetValue(chapterRef, currentSchedule.chapter);
-            safeSetValue(startTimeRef, currentSchedule.start_time);
-            safeSetValue(endTimeRef, currentSchedule.end_time);
-            safeSetValue(dayOfWeekRef, currentSchedule.day_of_week);
+                if (instructorIdRef.current && currentSchedule.instructor) {
+                    instructorIdRef.current.value = currentSchedule.instructor.instructor_id.toString();
+                }
+                if (roomIdRef.current && currentSchedule.room) {
+                    roomIdRef.current.value = currentSchedule.room.room_id.toString();
+                }
+                if (chapterRef.current) {
+                    chapterRef.current.value = currentSchedule.chapter || '';
+                }
+                if (startTimeRef.current) {
+                    startTimeRef.current.value = currentSchedule.start_time || '';
+                }
+                if (endTimeRef.current) {
+                    endTimeRef.current.value = currentSchedule.end_time || '';
+                }
+                if (dayOfWeekRef.current) {
+                    dayOfWeekRef.current.value = currentSchedule.day_of_week.toString();
+                }
+                if (scheduleDateRef.current && currentSchedule.schedule_date) {
+                    // Format date to YYYY-MM-DD for the date input
+                    const formattedDate = new Date(currentSchedule.schedule_date)
+                        .toISOString()
+                        .split('T')[0];
+                    scheduleDateRef.current.value = formattedDate;
+                }
+            }, 100);
         }
     }, [currentSchedule, isOpen]);
 
     const fetchCourses = async () => {
         try {
+            setLoading(true);
             const fetchedCourses = await courseApi.getCourses();
             setCourses(fetchedCourses);
         } catch (error) {
             console.error('Failed to fetch courses:', error);
+            setError('Failed to load courses');
             Swal.fire({
                 title: 'Error',
                 text: 'Gagal memuat daftar mata kuliah',
                 icon: 'error'
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchInstructors = async () => {
         try {
+            setLoading(true);
             const fetchedInstructors = await instructorApi.getInstructors();
             setInstructors(fetchedInstructors);
         } catch (error) {
             console.error('Failed to fetch instructors:', error);
+            setError('Failed to load instructors');
             Swal.fire({
                 title: 'Error',
                 text: 'Gagal memuat daftar dosen',
                 icon: 'error'
             });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchRooms = async () => {
+        try {
+            setLoading(true);
+            const fetchedRooms = await roomApi.getRooms();
+            setRooms(fetchedRooms);
+        } catch (error) {
+            console.error('Failed to fetch rooms:', error);
+            setError('Failed to load rooms');
+            Swal.fire({
+                title: 'Error',
+                text: 'Gagal memuat daftar ruangan',
+                icon: 'error'
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -121,69 +168,130 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
         });
     };
 
-    const handleSubmit = async (): Promise<void> => {
-        if (!currentSchedule) {
-            showAlert('Error', 'Tidak ada jadwal yang dipilih', 'error');
-            return;
-        }
-
+    const validateInputs = (): boolean => {
         const courseId = courseIdRef.current?.value;
         const instructorId = instructorIdRef.current?.value;
-        const room = roomRef.current?.value;
-        const chapter = chapterRef.current?.value;
+        const roomId = roomIdRef.current?.value;
         const startTime = startTimeRef.current?.value;
         const endTime = endTimeRef.current?.value;
         const dayOfWeek = dayOfWeekRef.current?.value;
+        const scheduleDate = scheduleDateRef.current?.value; // Added validation for schedule_date
 
-        const updateData: ScheduleUpdate = {};
-
-        // Only add fields that have changed
-        if (courseId && parseInt(courseId) !== currentSchedule.course?.course_id) {
-            updateData.course_id = parseInt(courseId);
+        if (!courseId || courseId === '') {
+            showAlert('Validasi Error', 'Pilih mata kuliah', 'error');
+            return false;
         }
-        if (instructorId && parseInt(instructorId) !== currentSchedule.instructor?.instructor_id) {
-            updateData.instructor_id = parseInt(instructorId);
+        if (!instructorId || instructorId === '') {
+            showAlert('Validasi Error', 'Pilih dosen', 'error');
+            return false;
         }
-        if (room && room !== currentSchedule.room) {
-            updateData.room = room;
+        if (!roomId || roomId === '') {
+            showAlert('Validasi Error', 'Pilih ruangan', 'error');
+            return false;
         }
-        if (chapter && chapter !== currentSchedule.chapter) {
-            updateData.chapter = chapter;
+        if (!startTime) {
+            showAlert('Validasi Error', 'Masukkan waktu mulai', 'error');
+            return false;
         }
-        if (startTime && startTime !== currentSchedule.start_time) {
-            updateData.start_time = startTime;
+        if (!endTime) {
+            showAlert('Validasi Error', 'Masukkan waktu selesai', 'error');
+            return false;
         }
-        if (endTime && endTime !== currentSchedule.end_time) {
-            updateData.end_time = endTime;
+        if (dayOfWeek === undefined || dayOfWeek === null) {
+            showAlert('Validasi Error', 'Pilih hari', 'error');
+            return false;
         }
-        if (dayOfWeek !== undefined && parseInt(dayOfWeek) !== currentSchedule.day_of_week) {
-            updateData.day_of_week = parseInt(dayOfWeek);
-        }
-
-        // If no changes, show an alert
-        if (Object.keys(updateData).length === 0) {
-            showAlert('Info', 'Tidak ada perubahan yang dilakukan', 'warning');
-            return;
+        if (!scheduleDate) { // Added validation for schedule_date
+            showAlert('Validasi Error', 'Masukkan tanggal jadwal', 'error');
+            return false;
         }
 
-        try {
-            await onUpdateSchedule(currentSchedule.schedule_id, updateData);
-            onClose();
-        } catch (err) {
-            console.error('Failed to update schedule:', err);
-            showAlert('Error!', 'Gagal memperbarui jadwal', 'error');
+        // Validate day_of_week value
+        const dayValue = parseInt(dayOfWeek, 10);
+        if (isNaN(dayValue) || dayValue < 1 || dayValue > 7) {
+            showAlert('Validasi Error', 'Nilai hari tidak valid (harus 1-7)', 'error');
+            return false;
         }
+
+        return true;
     };
 
-    if (!currentSchedule) return null;
+    const handleSubmit = async (): Promise<void> => {
+        try {
+            if (!currentSchedule || !currentSchedule.schedule_id) {
+                showAlert('Error', 'Data jadwal tidak valid', 'error');
+                return;
+            }
+
+            if (!validateInputs()) {
+                return;
+            }
+
+            setLoading(true);
+            setError(null);
+
+            const courseId = parseInt(courseIdRef.current?.value || '0', 10);
+            const instructorId = parseInt(instructorIdRef.current?.value || '0', 10);
+            const roomId = parseInt(roomIdRef.current?.value || '0', 10);
+            const chapter = chapterRef.current?.value?.trim() || '';
+            const startTime = startTimeRef.current?.value || '';
+            const endTime = endTimeRef.current?.value || '';
+            const dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0', 10);
+            const scheduleDate = scheduleDateRef.current?.value || ''; // Added schedule_date
+
+            console.log('Updating schedule data:', {
+                course_id: courseId,
+                instructor_id: instructorId,
+                room_id: roomId,
+                chapter,
+                start_time: startTime,
+                end_time: endTime,
+                day_of_week: dayOfWeek,
+                schedule_date: scheduleDate // Added schedule_date
+            });
+
+            await onUpdateSchedule(currentSchedule.schedule_id, {
+                course_id: courseId,
+                instructor_id: instructorId,
+                room_id: roomId,
+                chapter,
+                start_time: startTime,
+                end_time: endTime,
+                day_of_week: dayOfWeek,
+                schedule_date: scheduleDate // Added schedule_date
+            });
+
+            onClose();
+        } catch (error: unknown) {
+            console.error('Error updating schedule:', error);
+            let errorMessage = 'Gagal memperbarui jadwal.';
+            if (error instanceof Error) {
+                errorMessage = `Gagal memperbarui jadwal: ${error.message}`;
+            }
+            setError(errorMessage);
+            showAlert('Error!', errorMessage, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Perbarui Jadwal"
+            title="Edit Jadwal"
             onConfirm={handleSubmit}
         >
+            {loading && (
+                <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+            )}
+            {error && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                    {error}
+                </div>
+            )}
             <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Mata Kuliah</label>
@@ -191,6 +299,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         ref={courseIdRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     >
                         <option value="">Pilih Mata Kuliah</option>
                         {courses.map((course) => (
@@ -206,6 +315,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         ref={instructorIdRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     >
                         <option value="">Pilih Dosen</option>
                         {instructors.map((instructor) => (
@@ -217,12 +327,19 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                 </div>
                 <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ruangan</label>
-                    <input
-                        ref={roomRef}
+                    <select
+                        ref={roomIdRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        placeholder="Masukkan ruangan"
                         required
-                    />
+                        disabled={loading}
+                    >
+                        <option value="">Pilih Ruangan</option>
+                        {rooms.map((room) => (
+                            <option key={room.room_id} value={room.room_id}>
+                                {room.name}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Bab/Materi</label>
@@ -230,6 +347,17 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         ref={chapterRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         placeholder="Masukkan bab/materi (opsional)"
+                        disabled={loading}
+                    />
+                </div>
+                <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Tanggal Jadwal</label>
+                    <input
+                        ref={scheduleDateRef}
+                        type="date"
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
+                        required
+                        disabled={loading}
                     />
                 </div>
                 <div className="col-span-1">
@@ -239,6 +367,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         type="time"
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     />
                 </div>
                 <div className="col-span-1">
@@ -248,6 +377,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         type="time"
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     />
                 </div>
                 <div className="col-span-2">
@@ -256,6 +386,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         ref={dayOfWeekRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     >
                         <option value="">Pilih Hari</option>
                         {DAYS_OF_WEEK.map((day) => (

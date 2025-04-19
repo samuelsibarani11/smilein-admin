@@ -5,7 +5,6 @@ import {
   AttendanceRead, 
   AttendanceUpdate, 
   AttendanceWithScheduleRead,
-  CheckInRequest
 } from '../types/attendance';
 
 
@@ -34,44 +33,3 @@ export const deleteAttendance = async (attendanceId: number): Promise<void> => {
   await apiClient.delete(`/attendances/${attendanceId}`);
 };
 
-// Get student's attendance records
-export const getStudentAttendances = async (
-  studentId: number, 
-  scheduleId?: number
-): Promise<AttendanceRead[]> => {
-  const params: Record<string, any> = {};
-  if (scheduleId) params.schedule_id = scheduleId;
-  
-  const response = await apiClient.get<AttendanceRead[]>(`/attendances/student/${studentId}`, {
-    params
-  });
-  return response.data;
-};
-
-// Check-in endpoint
-export const checkIn = async (
-  scheduleId: number, 
-  data: CheckInRequest, 
-  smileDetected = false
-): Promise<AttendanceRead> => {
-  const response = await apiClient.post<AttendanceRead>('/attendances/check-in', data, {
-    params: {
-      schedule_id: scheduleId,
-      smile_detected: smileDetected
-    }
-  });
-  return response.data;
-};
-
-// Check-out endpoint
-export const checkOut = async (
-  scheduleId: number, 
-  locationData: Record<string, any>
-): Promise<AttendanceRead> => {
-  const response = await apiClient.post<AttendanceRead>('/attendances/check-out', locationData, {
-    params: {
-      schedule_id: scheduleId
-    }
-  });
-  return response.data;
-};

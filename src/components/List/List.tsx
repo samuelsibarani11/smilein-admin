@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getInstructorProfilePicture } from '../../api/instructorApi'; // Add this import
 
 interface ProfileCardProps {
   id: number;
   name: string;
   email: string;
-  description: React.ReactNode; // Changed to ReactNode to accept JSX
+  description: React.ReactNode;
   status?: 'Approved' | 'Pending' | 'Active' | 'Inactive';
   dob?: string;
   onDelete?: () => void;
@@ -21,6 +22,26 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   onDelete
 }) => {
   const navigate = useNavigate();
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Only fetch profile pictures for instructors
+    if (type === 'instructor') {
+      fetchProfilePicture();
+    }
+  }, [id, type]);
+
+  const fetchProfilePicture = async () => {
+    try {
+      const pictureData = await getInstructorProfilePicture(id);
+      if (pictureData && pictureData.profile_picture_url) {
+        setProfilePicture(pictureData.profile_picture_url);
+      }
+    } catch (err) {
+      console.log('No profile picture found, using initials');
+      // We'll use initials as fallback, so no need to set error
+    }
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -29,7 +50,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       .join('')
       .toUpperCase();
   };
-
 
   const handleClick = () => {
     // Dynamic navigation based on the type prop
@@ -56,9 +76,19 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       onClick={handleClick}
       className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 flex items-start space-x-4 transition-colors duration-200 cursor-pointer hover:shadow-lg"
     >
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white bg-blue-600`}>
-        {getInitials(name)}
-      </div>
+      {profilePicture ? (
+        <div className="w-12 h-12 rounded-full overflow-hidden">
+          <img 
+            src={profilePicture}
+            alt={`${name} profile`}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white bg-blue-600">
+          {getInitials(name)}
+        </div>
+      )}
       <div className="flex-1">
         <div className="flex justify-between items-start">
           <div>

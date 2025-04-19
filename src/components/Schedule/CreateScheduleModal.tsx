@@ -4,8 +4,10 @@ import { ScheduleCreate } from '../../types/schedule';
 import Swal from 'sweetalert2';
 import * as courseApi from '../../api/courseApi';
 import * as instructorApi from '../../api/instructorApi';
+import * as roomApi from '../../api/roomApi';
+import { Room } from '../../types/room';
 
-// Perbaikan: Sesuaikan nilai hari untuk dimulai dari 1 bukan 0
+// Days of week values from 1 (Monday) to 7 (Sunday)
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Senin' },
     { value: 2, label: 'Selasa' },
@@ -39,21 +41,24 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
 }) => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [instructors, setInstructors] = useState<Instructor[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
     const courseIdRef = useRef<HTMLSelectElement>(null);
     const instructorIdRef = useRef<HTMLSelectElement>(null);
-    const roomRef = useRef<HTMLInputElement>(null);
+    const roomIdRef = useRef<HTMLSelectElement>(null);
     const chapterRef = useRef<HTMLInputElement>(null);
     const startTimeRef = useRef<HTMLInputElement>(null);
     const endTimeRef = useRef<HTMLInputElement>(null);
     const dayOfWeekRef = useRef<HTMLSelectElement>(null);
+    const scheduleDateRef = useRef<HTMLInputElement>(null); // Added reference for the new field
 
     useEffect(() => {
         if (isOpen) {
             fetchCourses();
             fetchInstructors();
+            fetchRooms();
         }
     }, [isOpen]);
 
@@ -93,6 +98,24 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
         }
     };
 
+    const fetchRooms = async () => {
+        try {
+            setLoading(true);
+            const fetchedRooms = await roomApi.getRooms();
+            setRooms(fetchedRooms);
+        } catch (error) {
+            console.error('Failed to fetch rooms:', error);
+            setError('Failed to load rooms');
+            Swal.fire({
+                title: 'Error',
+                text: 'Gagal memuat daftar ruangan',
+                icon: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const showAlert = (title: string, message: string, icon: 'success' | 'error' | 'warning'): void => {
         Swal.fire({
             title: title,
@@ -109,10 +132,11 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     const validateInputs = (): boolean => {
         const courseId = courseIdRef.current?.value;
         const instructorId = instructorIdRef.current?.value;
-        const room = roomRef.current?.value;
+        const roomId = roomIdRef.current?.value;
         const startTime = startTimeRef.current?.value;
         const endTime = endTimeRef.current?.value;
         const dayOfWeek = dayOfWeekRef.current?.value;
+        const scheduleDate = scheduleDateRef.current?.value; // Added validation for the new field
 
         if (!courseId || courseId === '') {
             showAlert('Validasi Error', 'Pilih mata kuliah', 'error');
@@ -122,8 +146,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             showAlert('Validasi Error', 'Pilih dosen', 'error');
             return false;
         }
-        if (!room || room.trim() === '') {
-            showAlert('Validasi Error', 'Masukkan ruangan', 'error');
+        if (!roomId || roomId === '') {
+            showAlert('Validasi Error', 'Pilih ruangan', 'error');
             return false;
         }
         if (!startTime) {
@@ -138,18 +162,21 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             showAlert('Validasi Error', 'Pilih hari', 'error');
             return false;
         }
+        if (!scheduleDate) { // Added validation for the new field
+            showAlert('Validasi Error', 'Masukkan tanggal jadwal', 'error');
+            return false;
+        }
 
-        // Validasi tambahan untuk day_of_week
+        // Validate day_of_week value
         const dayValue = parseInt(dayOfWeek, 10);
-        if (isNaN(dayValue) || dayValue < 0 || dayValue > 6) {
-            showAlert('Validasi Error', 'Nilai hari tidak valid (harus 0-6)', 'error');
+        if (isNaN(dayValue) || dayValue < 1 || dayValue > 7) {
+            showAlert('Validasi Error', 'Nilai hari tidak valid (harus 1-7)', 'error');
             return false;
         }
 
         return true;
     };
 
-    // Perbaikan pada handleSubmit di CreateScheduleModal.tsx
     const handleSubmit = async (): Promise<void> => {
         try {
             if (!validateInputs()) {
@@ -159,46 +186,46 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             setLoading(true);
             setError(null);
 
-            // Pastikan parsing ke number dilakukan dengan benar
             const courseId = parseInt(courseIdRef.current?.value || '0', 10);
             const instructorId = parseInt(instructorIdRef.current?.value || '0', 10);
-            const room = roomRef.current?.value?.trim() || '';
+            const roomId = parseInt(roomIdRef.current?.value || '0', 10);
             const chapter = chapterRef.current?.value?.trim() || '';
             const startTime = startTimeRef.current?.value || '';
             const endTime = endTimeRef.current?.value || '';
-
-            // Pastikan nilai day_of_week dikonversi dengan benar (nilai >= 1)
-            let dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0', 10);
-
-            // Validasi nilai day_of_week sesuai yang diharapkan API
-            if (isNaN(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) {
-                showAlert('Validasi Error', 'Hari tidak valid (harus 1-7)', 'error');
-                return;
-            }
+            const dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0', 10);
+            const scheduleDate = scheduleDateRef.current?.value || ''; // Added the new field
 
             console.log('Submitting schedule data:', {
                 course_id: courseId,
                 instructor_id: instructorId,
-                room,
+                room_id: roomId,
                 chapter,
                 start_time: startTime,
                 end_time: endTime,
-                day_of_week: dayOfWeek
+                day_of_week: dayOfWeek,
+                schedule_date: scheduleDate // Added the new field
             });
 
             await onCreateSchedule({
                 course_id: courseId,
                 instructor_id: instructorId,
-                room,
+                room_id: roomId,
                 chapter,
                 start_time: startTime,
                 end_time: endTime,
-                day_of_week: dayOfWeek
+                day_of_week: dayOfWeek,
+                schedule_date: scheduleDate // Added the new field
             });
 
             onClose();
         } catch (error: unknown) {
-            // Error handling code tetap sama
+            console.error('Error creating schedule:', error);
+            let errorMessage = 'Gagal membuat jadwal.';
+            if (error instanceof Error) {
+                errorMessage = `Gagal membuat jadwal: ${error.message}`;
+            }
+            setError(errorMessage);
+            showAlert('Error!', errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -210,8 +237,12 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             onClose={onClose}
             title="Tambah Jadwal Baru"
             onConfirm={handleSubmit}
-            loading={loading}
         >
+            {loading && (
+                <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+            )}
             {error && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
                     {error}
@@ -224,6 +255,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         ref={courseIdRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     >
                         <option value="">Pilih Mata Kuliah</option>
                         {courses.map((course) => (
@@ -239,6 +271,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         ref={instructorIdRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     >
                         <option value="">Pilih Dosen</option>
                         {instructors.map((instructor) => (
@@ -250,12 +283,19 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                 </div>
                 <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ruangan</label>
-                    <input
-                        ref={roomRef}
+                    <select
+                        ref={roomIdRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        placeholder="Masukkan ruangan"
                         required
-                    />
+                        disabled={loading}
+                    >
+                        <option value="">Pilih Ruangan</option>
+                        {rooms.map((room) => (
+                            <option key={room.room_id} value={room.room_id}>
+                                {room.name}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Bab/Materi</label>
@@ -263,6 +303,17 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         ref={chapterRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         placeholder="Masukkan bab/materi (opsional)"
+                        disabled={loading}
+                    />
+                </div>
+                <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Tanggal Jadwal</label>
+                    <input
+                        ref={scheduleDateRef}
+                        type="date"
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
+                        required
+                        disabled={loading}
                     />
                 </div>
                 <div className="col-span-1">
@@ -272,6 +323,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         type="time"
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     />
                 </div>
                 <div className="col-span-1">
@@ -281,6 +333,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         type="time"
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     />
                 </div>
                 <div className="col-span-2">
@@ -289,6 +342,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         ref={dayOfWeekRef}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         required
+                        disabled={loading}
                     >
                         <option value="">Pilih Hari</option>
                         {DAYS_OF_WEEK.map((day) => (

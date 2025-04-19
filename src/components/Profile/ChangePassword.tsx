@@ -3,7 +3,8 @@ import Swal from 'sweetalert2';
 import apiClient from '../../api/client';
 
 interface ChangePasswordProps {
-    adminId?: number | string;  // Updated to accept both number and string
+    userType?: 'admin' | 'instructor';  // Define the user type prop
+    userId?: number | string;
 }
 
 interface ChangePasswordRequest {
@@ -12,7 +13,7 @@ interface ChangePasswordRequest {
     confirm_password: string;
 }
 
-const ChangePassword: React.FC<ChangePasswordProps> = () => {
+const ChangePassword: React.FC<ChangePasswordProps> = ({ userType = 'admin', userId }) => {
     const [formData, setFormData] = useState({
         currentPassword: '',
         newPassword: '',
@@ -31,10 +32,15 @@ const ChangePassword: React.FC<ChangePasswordProps> = () => {
 
     const changePassword = async (data: ChangePasswordRequest) => {
         try {
-            const response = await apiClient.post('/admins/change-password', data);
+            // Use different endpoints based on user type
+            const endpoint = userType === 'instructor'
+                ? '/instructors/change-password'
+                : '/admins/change-password';
+
+            const response = await apiClient.post(endpoint, data);
             return response.data;
         } catch (error) {
-            console.error('Error changing password:', error);
+            console.error(`Error changing ${userType} password:`, error);
             throw error;
         }
     };
@@ -105,7 +111,7 @@ const ChangePassword: React.FC<ChangePasswordProps> = () => {
         <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
             <div className="border-b border-stroke py-4 px-6.5 dark:border-strokedark">
                 <h3 className="font-medium text-black dark:text-white">
-                    Change Password
+                    Change Password {userType === 'instructor' ? '(Instructor)' : '(Admin)'}
                 </h3>
             </div>
             <form id="password-form" onSubmit={handleSubmit}>

@@ -19,7 +19,40 @@ export interface AttendanceCreate {
     smile_detected: boolean;
     created_at: string;
     updated_at: string | null;
-  }
+    student: {
+        nim: string;
+        username: string;
+        full_name: string;
+        major_name: string;
+        profile_picture_url: string;
+        face_data: Record<string, any>;
+        year: string;
+        is_approved: boolean;
+    };
+    schedule: {
+        schedule_id: number;
+        room: {
+            name: string;
+            latitude: number;
+            longitude: number;
+            radius: number;
+            room_id: number;
+        };
+        chapter: string;
+        day_of_week: number;
+        start_time: string;
+        end_time: string;
+        course: {
+            course_id: number;
+            course_name: string;
+        };
+        instructor: {
+            instructor_id: number;
+            full_name: string;
+        };
+    };
+}
+
   
   export interface AttendanceUpdate {
     check_out_time?: string | null;

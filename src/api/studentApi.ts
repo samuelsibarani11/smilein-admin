@@ -31,7 +31,7 @@ export const updateStudent = async (studentId: number, studentData: StudentUpdat
 
     const mergedData = { ...currentStudent, ...studentData };
 
-    const response = await apiClient.patch<StudentRead>(`/students/${studentId}`, mergedData);
+    const response = await apiClient.put<StudentRead>(`/students/${studentId}`, mergedData);
 
     console.log(response.data)
     return response.data;

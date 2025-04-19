@@ -189,9 +189,21 @@ const CourseList: React.FC = () => {
             await courseApi.deleteCourse(currentCourse.course_id);
             setCourses(courses.filter(c => c.course_id !== currentCourse.course_id));
             showAlert('Terhapus!', 'Mata kuliah telah dihapus.', 'success');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to delete course:', err);
-            showAlert('Error!', 'Gagal menghapus mata kuliah.', 'error');
+
+            // Check if the error is due to course being in use (has schedules)
+            if (err.response && err.response.status === 400 &&
+                err.response.data && err.response.data.detail &&
+                err.response.data.detail.includes('cannot be deleted because it is currently in use')) {
+                showAlert(
+                    'Gagal Menghapus!',
+                    'Mata kuliah ini tidak dapat dihapus karena sedang digunakan dalam jadwal kuliah.',
+                    'error'
+                );
+            } else {
+                showAlert('Error!', 'Gagal menghapus mata kuliah.', 'error');
+            }
         }
     };
 

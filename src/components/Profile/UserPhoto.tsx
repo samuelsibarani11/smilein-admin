@@ -1,16 +1,19 @@
 import React, { useState, useRef } from 'react';
-import { getAdminProfilePicture, uploadProfilePicture } from '../../api/adminApi';
+import { getAdminProfilePicture, uploadProfilePicture as uploadAdminProfilePicture } from '../../api/adminApi';
+import { getInstructorProfilePicture, uploadProfilePicture as uploadInstructorProfilePicture } from '../../api/instructorApi';
 import userThree from '../../images/user/user-03.png';
-import Swal from 'sweetalert2'; // Import Swal
+import Swal from 'sweetalert2';
 
 interface UserPhotoProps {
-  adminId?: number;
+  userId?: number;
+  userType?: 'admin' | 'instructor';
   currentProfilePicture?: string | null;
   className?: string;
 }
 
 const UserPhoto: React.FC<UserPhotoProps> = ({
-  adminId,
+  userId,
+  userType = 'admin',
   currentProfilePicture = userThree
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -30,16 +33,49 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
     }
   };
 
+  const getProfilePicture = async () => {
+    if (!userId) return null;
+
+    try {
+      if (userType === 'instructor') {
+        return await getInstructorProfilePicture(userId);
+      } else {
+        return await getAdminProfilePicture(userId);
+      }
+    } catch (error) {
+      console.error(`Error fetching ${userType} profile picture`, error);
+      throw error;
+    }
+  };
+
+  const uploadPhoto = async (file: File) => {
+    if (!userId) return null;
+
+    try {
+      if (userType === 'instructor') {
+        return await uploadInstructorProfilePicture(userId, file);
+      } else {
+        return await uploadAdminProfilePicture(userId, file);
+      }
+    } catch (error) {
+      console.error(`Error uploading ${userType} profile picture`, error);
+      throw error;
+    }
+  };
+
   const handleUpload = async () => {
-    if (selectedFile && adminId) {
+    if (selectedFile && userId) {
       try {
         setIsUploading(true);
-        const updatedAdmin = await uploadProfilePicture(adminId, selectedFile);
-        // After successful upload, fetch the updated profile picture URL
-        const profilePicData = await getAdminProfilePicture(adminId);
-        setPreviewImage(profilePicData.profile_picture_url);
+        await uploadPhoto(selectedFile);
 
-        // Show success message with Swal instead of alert
+        // After successful upload, fetch the updated profile picture URL
+        const profilePicData = await getProfilePicture();
+        if (profilePicData) {
+          setPreviewImage(profilePicData.profile_picture_url);
+        }
+
+        // Show success message with Swal
         Swal.fire({
           title: 'Success!',
           text: 'Profile picture uploaded successfully!',
@@ -59,13 +95,14 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
           icon: 'error',
           confirmButtonColor: '#3C50E0'
         });
+      } finally {
         setIsUploading(false);
       }
     } else {
       // Show warning message with Swal
       Swal.fire({
         title: 'Warning!',
-        text: 'Please select a file and ensure admin ID is available',
+        text: `Please select a file and ensure ${userType} ID is available`,
         icon: 'warning',
         confirmButtonColor: '#3C50E0'
       });
@@ -142,7 +179,6 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
     }
   };
 
-  // Rest of the component remains the same...
   // Helper function to format image URL
   const formatImageUrl = (url: string | null) => {
     if (!url) return userThree;
@@ -153,10 +189,9 @@ const UserPhoto: React.FC<UserPhotoProps> = ({
 
   return (
     <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-      {/* Rest of JSX remains the same */}
       <div className="border-b border-stroke py-4 px-7 dark:border-strokedark">
         <h3 className="font-medium text-black dark:text-white">
-          Your Photo
+          Your Photo {userType === 'instructor' ? '(Instructor)' : '(Admin)'}
         </h3>
       </div>
       <div className="p-7">

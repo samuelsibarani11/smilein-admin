@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { ScheduleRead } from '../../types/schedule';
-import { getSchedules } from '../../api/scheduleApi';
+import * as scheduleApi from '../../api/scheduleApi';
 import { StudentRead } from '../../types/student';
 
 interface ScheduleProps {
     studentData: StudentRead | null;
 }
+
+const DAYS_OF_WEEK = [
+    '', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+];
 
 const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
     const studentId = studentData?.student_id;
@@ -14,22 +18,18 @@ const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    const daysOfWeek = [
-        'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'
-    ];
-
     useEffect(() => {
         const fetchData = async () => {
+            if (!studentId) return; // Skip if studentId undefined/null
+
             try {
-                if (studentId) {
-                    setLoading(true);
-                    const data = await getSchedules(0, 100, { instructor_id: studentId });
-                    setSchedules(data);
-                    setError(null);
-                }
+                setLoading(true);
+                const data = await scheduleApi.getSchedules(0, 100, { instructor_id: studentId });
+                setSchedules(data);
+                setError(null);
             } catch (err) {
-                setError('Failed to fetch schedules');
-                console.error(err);
+                console.error('Failed to fetch schedules:', err);
+                setError('Failed to load schedules');
             } finally {
                 setLoading(false);
             }
@@ -38,9 +38,18 @@ const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
         fetchData();
     }, [studentId]);
 
+    const formatDate = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
     return (
         <div className="mt-6 p-4 md:p-6 border dark:border-gray-700 rounded-lg dark:bg-gray-800">
-            <h2 className="text-lg font-semibold dark:text-white mb-6">Schedule Information</h2>
+            <h2 className="text-lg font-semibold dark:text-white mb-6">Informasi Jadwal</h2>
 
             {error && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -58,30 +67,38 @@ const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
                         <thead className="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Course</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Room</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Time</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mata Kuliah</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ruangan</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Hari</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tanggal</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Waktu</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bab/Materi</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                             {schedules.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                                        No schedules found for this student
+                                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                        Tidak ada jadwal ditemukan untuk mahasiswa ini
                                     </td>
                                 </tr>
                             ) : (
                                 schedules.map((schedule) => (
                                     <tr key={schedule.schedule_id}>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-200">{schedule.schedule_id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-200">{schedule.course.course_name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{schedule.room}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-200">{schedule.course?.course_name || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{schedule.room?.name || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
-                                            {daysOfWeek[schedule.day_of_week]}
+                                            {DAYS_OF_WEEK[schedule.day_of_week] || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                            {formatDate(schedule.schedule_date)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
                                             {schedule.start_time} - {schedule.end_time}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                            {schedule.chapter || '-'}
                                         </td>
                                     </tr>
                                 ))

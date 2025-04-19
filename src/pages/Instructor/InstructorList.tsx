@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
-import { getInstructors, deleteInstructor } from '../../api/instructorApi';
+import { useNavigate } from 'react-router-dom';
+import { getInstructors, deleteInstructor, getInstructorProfilePicture } from '../../api/instructorApi';
 import Swal from 'sweetalert2';
 import ProfileCard from '../../components/List/List';
 import AddInstructorModal from '../../components/Instructor/AddInstructorModal';
 import { InstructorRead } from '../../types/instructor';
 
+// Interface for instructor with profile picture
+interface InstructorWithPicture extends InstructorRead {
+    profilePicture?: string | null;
+}
+
 const InstructorList = () => {
-    const [instructors, setInstructors] = useState<InstructorRead[]>([]);
-    const [filteredInstructors, setFilteredInstructors] = useState<InstructorRead[]>([]);
+    const [instructors, setInstructors] = useState<InstructorWithPicture[]>([]);
+    const [filteredInstructors, setFilteredInstructors] = useState<InstructorWithPicture[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -28,14 +34,42 @@ const InstructorList = () => {
             setLoading(true);
             setError(null);
             const data = await getInstructors();
-            setInstructors(data);
-            setFilteredInstructors(data);
+
+            // Fetch profile pictures for all instructors
+            const instructorsWithPictures = await Promise.all(
+                data.map(async (instructor: { instructor_id: number; }) => {
+                    try {
+                        const pictureData = await getInstructorProfilePicture(instructor.instructor_id);
+                        return {
+                            ...instructor,
+                            profilePicture: pictureData?.profile_picture_url ? formatImageUrl(pictureData.profile_picture_url) : null
+                        };
+                    } catch (error) {
+                        console.log(`No profile picture for instructor ${instructor.instructor_id}`);
+                        return {
+                            ...instructor,
+                            profilePicture: null
+                        };
+                    }
+                })
+            );
+
+            setInstructors(instructorsWithPictures);
+            setFilteredInstructors(instructorsWithPictures);
         } catch (err) {
             setError('Failed to load instructors');
             console.error(err);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Helper function to format image URL
+    const formatImageUrl = (url: string | null) => {
+        if (!url) return null;
+        if (url.startsWith('data:')) return url;
+        if (url.startsWith('/')) return `http://localhost:8000${url}`;
+        return url;
     };
 
     const applyFilters = () => {
@@ -166,7 +200,7 @@ const InstructorList = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredInstructors.map((instructor) => (
-                        <ProfileCard
+                        <EnhancedProfileCard
                             key={instructor.instructor_id}
                             id={instructor.instructor_id}
                             name={instructor.full_name}
@@ -179,10 +213,112 @@ const InstructorList = () => {
                             status={getStatusText(instructor.is_active)}
                             onDelete={() => handleDelete(instructor.instructor_id)}
                             type='instructor'
+                            profilePicture={instructor.profilePicture}
                         />
                     ))}
                 </div>
             )}
+        </div>
+    );
+};
+
+// Enhanced Profile Card component with profile picture support
+interface EnhancedProfileCardProps extends Omit<React.ComponentProps<typeof ProfileCard>, 'profilePicture'> {
+    profilePicture?: string | null;
+}
+
+const EnhancedProfileCard: React.FC<EnhancedProfileCardProps> = ({
+    id,
+    name,
+    email,
+    description,
+    onDelete,
+    type,
+    profilePicture
+}) => {
+    const navigate = useNavigate();
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase();
+    };
+
+    const handleClick = () => {
+        // Dynamic navigation based on the type prop
+        const route = type === 'student'
+            ? `/student/student-list/${id}`
+            : `/instructor/instructor-list/${id}`;
+
+        navigate(route, {
+            state: {
+                [`${type}Id`]: id  // Dynamically set studentId or instructorId
+            }
+        });
+    };
+
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent navigation when clicking delete
+        if (onDelete) {
+            onDelete();
+        }
+    };
+
+    return (
+        <div
+            onClick={handleClick}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 flex items-start space-x-4 transition-colors duration-200 cursor-pointer hover:shadow-lg"
+        >
+            {profilePicture ? (
+                <div className="w-12 h-12 rounded-full overflow-hidden">
+                    <img
+                        src={profilePicture}
+                        alt={`${name} profile`}
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+            ) : (
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white bg-blue-600">
+                    {getInitials(name)}
+                </div>
+            )}
+            <div className="flex-1">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="font-medium text-gray-900 dark:text-white">{name}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{email}</p>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {description}
+                        </div>
+                    </div>
+                    {onDelete && (
+                        <button
+                            onClick={handleDeleteClick}
+                            className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors duration-200"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

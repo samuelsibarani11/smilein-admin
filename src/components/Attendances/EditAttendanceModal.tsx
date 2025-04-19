@@ -1,25 +1,16 @@
 import React, { useRef } from 'react';
 import Modal from '../../components/Modal';
+import { AttendanceWithScheduleRead, AttendanceUpdate } from '../../types/attendance';
 import Swal from 'sweetalert2';
-
-interface Attendance {
-    id: number;
-    studentId: string;
-    studentName: string;
-    course: string;
-    date: string;
-    checkIn: string;
-    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
-}
 
 interface UpdateAttendanceModalProps {
     isOpen: boolean;
     onClose: () => void;
-    currentAttendance: Attendance | null;
-    onUpdateAttendance: (attendanceId: number, attendanceData: Partial<Attendance>) => Promise<void>;
+    currentAttendance: AttendanceWithScheduleRead | null;
+    onUpdateAttendance: (attendanceId: number, attendanceData: AttendanceUpdate) => Promise<void>;
 }
 
-const ATTENDANCE_STATUS = ['Hadir', 'Terlambat', 'Tidak Hadir'];
+const ATTENDANCE_STATUS = ['PRESENT', 'LATE', 'ABSENT'];
 
 const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
     isOpen,
@@ -28,7 +19,8 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
     onUpdateAttendance
 }) => {
     const statusRef = useRef<HTMLSelectElement>(null);
-    const checkInRef = useRef<HTMLInputElement>(null);
+    const checkInTimeRef = useRef<HTMLInputElement>(null);
+    const checkOutTimeRef = useRef<HTMLInputElement>(null);
 
     const showAlert = (title: string, message: string, icon: 'success' | 'error' | 'warning'): void => {
         Swal.fire({
@@ -50,17 +42,22 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
         }
 
         const status = statusRef.current?.value;
-        const checkIn = checkInRef.current?.value;
+        const checkInTime = checkInTimeRef.current?.value;
+        const checkOutTime = checkOutTimeRef.current?.value;
 
-        const updateData: Partial<Attendance> = {};
+        const updateData: AttendanceUpdate = {};
 
         if (status && status !== currentAttendance.status) {
-            updateData.status = status as 'Hadir' | 'Terlambat' | 'Tidak Hadir';
+            updateData.status = status;
         }
-        if (checkIn && checkIn !== currentAttendance.checkIn) {
-            updateData.checkIn = checkIn;
+        
+        if (checkInTime && checkInTime !== currentAttendance.check_in_time) {
+            updateData.check_in_time = checkInTime;
         }
-
+        
+        if (checkOutTime && checkOutTime !== currentAttendance.check_out_time) {
+            updateData.check_out_time = checkOutTime;
+        }
 
         if (Object.keys(updateData).length === 0) {
             showAlert('Info', 'Tidak ada perubahan yang dilakukan', 'warning');
@@ -68,11 +65,21 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
         }
 
         try {
-            await onUpdateAttendance(currentAttendance.id, updateData);
+            await onUpdateAttendance(currentAttendance.attendance_id, updateData);
             onClose();
         } catch (err) {
             console.error('Failed to update attendance:', err);
             showAlert('Error!', 'Gagal memperbarui data kehadiran', 'error');
+        }
+    };
+
+    // Get status display text
+    const getStatusText = (status: string): string => {
+        switch (status.toUpperCase()) {
+            case 'PRESENT': return 'Hadir';
+            case 'LATE': return 'Terlambat';
+            case 'ABSENT': return 'Tidak Hadir';
+            default: return status;
         }
     };
 
@@ -92,7 +99,7 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
                     </label>
                     <input
                         type="text"
-                        value={currentAttendance.studentName}
+                        value={currentAttendance.student?.full_name || '-'}
                         disabled
                         className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100"
                     />
@@ -103,7 +110,7 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
                     </label>
                     <input
                         type="text"
-                        value={currentAttendance.course}
+                        value={currentAttendance.schedule?.course?.course_name || '-'}
                         disabled
                         className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100"
                     />
@@ -127,11 +134,10 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
                         ref={statusRef}
                         defaultValue={currentAttendance.status}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        required
                     >
                         {ATTENDANCE_STATUS.map((status) => (
                             <option key={status} value={status}>
-                                {status}
+                                {getStatusText(status)}
                             </option>
                         ))}
                     </select>
@@ -142,11 +148,21 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
                             Waktu Check-in
                         </label>
                         <input
-                            ref={checkInRef}
+                            ref={checkInTimeRef}
                             type="time"
-                            defaultValue={currentAttendance.checkIn}
+                            defaultValue={currentAttendance.check_in_time || ''}
                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Waktu Check-out
+                        </label>
+                        <input
+                            ref={checkOutTimeRef}
+                            type="time"
+                            defaultValue={currentAttendance.check_out_time || ''}
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                         />
                     </div>
                 </div>

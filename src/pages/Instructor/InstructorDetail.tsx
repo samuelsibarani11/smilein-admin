@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInstructor, updateInstructor, getNextInstructor } from '../../api/instructorApi';
+import {
+    getInstructor,
+    updateInstructor,
+    getNextInstructor,
+    getInstructorProfilePicture
+} from '../../api/instructorApi';
 import { InstructorRead, InstructorUpdate } from '../../types/instructor';
 import About from '../../components/Instructor/About';
 import InstructorCourses from '../../components/Instructor/InstructorCourses';
@@ -17,6 +22,7 @@ const InstructorDetail: React.FC = () => {
     const [activeTab, setActiveTab] = useState<string>('About');
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
     const [isNavigating, setIsNavigating] = useState<boolean>(false);
+    const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
     // Removed "Assignment" from tabs array
     const tabs: string[] = [
@@ -30,6 +36,17 @@ const InstructorDetail: React.FC = () => {
                 if (id) {
                     const instructor = await getInstructor(parseInt(id, 10));
                     setInstructorData(instructor);
+
+                    // Fetch profile picture
+                    try {
+                        const pictureData = await getInstructorProfilePicture(parseInt(id, 10));
+                        if (pictureData && pictureData.profile_picture_url) {
+                            setProfilePicture(formatImageUrl(pictureData.profile_picture_url));
+                        }
+                    } catch (err) {
+                        console.log('No profile picture found, using initials');
+                        // We'll use initials as fallback, so no need to set error
+                    }
                 }
             } catch (err) {
                 console.error('Failed to fetch instructor details', err);
@@ -41,6 +58,14 @@ const InstructorDetail: React.FC = () => {
 
         fetchInstructorDetails();
     }, [id]);
+
+    // Helper function to format image URL
+    const formatImageUrl = (url: string | null) => {
+        if (!url) return null;
+        if (url.startsWith('data:')) return url;
+        if (url.startsWith('/')) return `http://localhost:8000${url}`;
+        return url;
+    };
 
     const handleNextInstructor = async () => {
         if (loading || isNavigating || !instructorData?.instructor_id) return;
@@ -103,7 +128,6 @@ const InstructorDetail: React.FC = () => {
             const validatedData = validateInstructorUpdate(updateData);
 
             // For API calls, if your backend requires all fields, merge with current data
-
             const updatedInstructor = await updateInstructor(instructorId, validatedData);
             setInstructorData(updatedInstructor);
             setIsUpdateModalOpen(false);
@@ -118,9 +142,6 @@ const InstructorDetail: React.FC = () => {
                 timer: 3000,
                 timerProgressBar: true
             });
-
-            // You can keep the toast notification as a fallback or remove it
-            // toast.success('Instructor data updated successfully');
         } catch (error: any) {
             if (axios.isAxiosError(error)) {
                 const errorDetails = error.response?.data;
@@ -139,8 +160,6 @@ const InstructorDetail: React.FC = () => {
                     confirmButtonText: 'OK',
                     confirmButtonColor: '#d33'
                 });
-
-                // toast.error(errorMessages || 'Failed to update instructor');
             } else {
                 console.error('Unexpected error:', error);
 
@@ -152,8 +171,6 @@ const InstructorDetail: React.FC = () => {
                     confirmButtonText: 'OK',
                     confirmButtonColor: '#d33'
                 });
-
-                // toast.error(error.message || 'An unexpected error occurred');
             }
         }
     };
@@ -197,11 +214,23 @@ const InstructorDetail: React.FC = () => {
     return (
         <div className="p-4 md:p-6 bg-white dark:bg-gray-900">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6 mb-6 md:mb-8">
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <span className="text-xl md:text-2xl text-white">
-                        {getInitials(instructorData?.full_name)}
-                    </span>
-                </div>
+                {/* Profile Picture */}
+                {profilePicture ? (
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden">
+                        <img
+                            src={profilePicture}
+                            alt={`${instructorData?.full_name} profile`}
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                ) : (
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span className="text-xl md:text-2xl text-white">
+                            {getInitials(instructorData?.full_name)}
+                        </span>
+                    </div>
+                )}
+
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
@@ -226,7 +255,6 @@ const InstructorDetail: React.FC = () => {
                                 disabled={loading || isNavigating}
                             >
                                 {isNavigating ? (
-                                    // Optional: Tampilkan loader kecil saat navigasi
                                     <svg className="w-5 h-5 dark:text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

@@ -45,7 +45,7 @@ export const getSchedules = async (
   filters?: {
     course_id?: number | null;
     instructor_id?: number | null;
-    room?: string | null;
+    room_id?: number | null; // Updated to room_id instead of room
     day_of_week?: number | null;
   }
 ): Promise<ScheduleRead[]> => {
@@ -91,7 +91,7 @@ export const deleteSchedule = async (scheduleId: number): Promise<void> => {
   try {
     console.log(`Attempting to delete schedule with ID: ${scheduleId}`);
     
-    // Tambahkan timeout lebih lama untuk menghindari race condition
+    // Set a longer timeout to avoid race conditions
     await apiClient.delete(`/schedules/${scheduleId}`, {
       timeout: 10000 
     });
@@ -100,17 +100,19 @@ export const deleteSchedule = async (scheduleId: number): Promise<void> => {
   } catch (error: unknown) {
     console.error(`Error deleting schedule with ID ${scheduleId}:`, error);
     
-    // Log error detail untuk debugging
+    // Log error details for debugging
     if (error && typeof error === 'object' && 'response' in error) {
       const axiosError = error as any;
       console.error('Error status:', axiosError.response?.status);
       console.error('Error data:', JSON.stringify(axiosError.response?.data, null, 2));
     }
     
-    // Re-throw untuk ditangani di komponen
+    // Re-throw for component handling
     handleApiError(error, `Failed to delete schedule with ID ${scheduleId}`);
   }
 };
+
+// The following methods need to be updated if they're still needed and part of the API
 
 // Get schedules for a specific student
 export const getStudentSchedules = async (

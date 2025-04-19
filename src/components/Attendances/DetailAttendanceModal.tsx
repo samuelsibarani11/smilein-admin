@@ -1,147 +1,211 @@
-import Swal from 'sweetalert2';
+import React from 'react';
+import Modal from '../../components/Modal';
+import { AttendanceWithScheduleRead } from '../../types/attendance';
+import { format } from 'date-fns';
 
-interface Attendance {
-    id: number;
-    studentId: string;
-    studentName: string;
-    course: string;
-    date: string;
-    checkIn: string;
-    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
-    locationData: {
-        latitude: number;
-        longitude: number;
-        accuracy: number;
-        timestamp: string;
-    }[];
-    faceVerification: {
-        status: boolean;
-        confidence: number;
-        timestamp: string;
-    };
-    major: string;
-    lateReason?: string;
+interface AttendanceDetailModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    attendance: AttendanceWithScheduleRead;
 }
 
-export const showAttendanceDetails = async (attendance: Attendance) => {
-    await Swal.fire({
-        customClass: {
-            popup: 'rounded-xl shadow-2xl dark:bg-gray-800 dark:text-gray-200 bg-white text-gray-900',
-            title: 'dark:text-white text-gray-900'
-        },
-        title: 'Detail Kehadiran',
-        html: `
-            <div class="space-y-6 text-left dark:text-gray-300 text-gray-800">
+const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
+    isOpen,
+    onClose,
+    attendance
+}) => {
+    // Format date
+    const formatDate = (dateString: string | null) => {
+        if (!dateString) return '-';
+        try {
+            return format(new Date(dateString), 'dd/MM/yyyy');
+        } catch (error) {
+            return dateString;
+        }
+    };
+
+    // Format time
+    const formatTime = (timeString: string | null) => {
+        if (!timeString) return '-';
+        return timeString;
+    };
+
+    // Format datetime
+    const formatDateTime = (dateTimeString: string | null) => {
+        if (!dateTimeString) return '-';
+        try {
+            return format(new Date(dateTimeString), 'dd/MM/yyyy HH:mm:ss');
+        } catch (error) {
+            return dateTimeString;
+        }
+    };
+
+    // Get status display
+    const getStatusDisplay = (status: string) => {
+        switch (status.toUpperCase()) {
+            case 'PRESENT':
+                return {
+                    text: 'Hadir',
+                    className: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
+                };
+            case 'LATE':
+                return {
+                    text: 'Terlambat',
+                    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                };
+            case 'ABSENT':
+                return {
+                    text: 'Tidak Hadir',
+                    className: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
+                };
+            default:
+                return {
+                    text: status,
+                    className: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-300'
+                };
+        }
+    };
+
+    const status = getStatusDisplay(attendance.status);
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Detail Kehadiran"
+            showConfirmButton={false}
+            size="lg"
+        >
+            <div className="space-y-6">
                 <div>
-                    <h3 class="text-lg font-semibold mb-2 dark:text-white text-gray-900">Informasi Mahasiswa</h3>
-                    <div class="grid grid-cols-2 gap-4">
+                    <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Informasi Mahasiswa</h3>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">NIM</p>
-                            <p class="font-medium dark:text-gray-100">${attendance.studentId}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">NIM</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.student?.nim || '-'}</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Nama</p>
-                            <p class="font-medium dark:text-gray-100">${attendance.studentName}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Nama</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.student?.full_name || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Program Studi</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.student?.major_name || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Tahun Masuk</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.student?.year || '-'}</p>
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <h3 class="text-lg font-semibold mb-2 dark:text-white text-gray-900">Informasi Kehadiran</h3>
-                    <div class="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Informasi Mata Kuliah</h3>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Check-in</p>
-                            <p class="font-medium ${!attendance.checkIn ? 'text-red-600 dark:text-red-400' : 'dark:text-gray-100'}">
-                                ${attendance.checkIn || 'Tidak Check-in'}
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Mata Kuliah</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.schedule?.course?.course_name || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Pengajar</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.schedule?.instructor?.full_name || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Ruangan</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.schedule?.room?.name || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Jadwal</p>
+                            <p className="font-medium dark:text-gray-100">
+                                {attendance.schedule?.start_time} - {attendance.schedule?.end_time}
                             </p>
                         </div>
-                        
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Informasi Kehadiran</h3>
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Status</p>
-                            <p class="font-medium">
-                                <span class="px-2 py-1 rounded-full text-sm ${attendance.status === 'Hadir'
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' :
-                attendance.status === 'Terlambat'
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' :
-                    'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
-            }">
-                                    ${attendance.status}
+                            <p className="text-sm text-gray-500 dark:text-gray-400">ID Kehadiran</p>
+                            <p className="font-medium dark:text-gray-100">{attendance.attendance_id}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Tanggal</p>
+                            <p className="font-medium dark:text-gray-100">{formatDate(attendance.date)}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Check-in</p>
+                            <p className="font-medium dark:text-gray-100">{formatTime(attendance.check_in_time) || 'Tidak Check-in'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Check-out</p>
+                            <p className="font-medium dark:text-gray-100">{formatTime(attendance.check_out_time) || 'Tidak Check-out'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                            <p className="font-medium">
+                                <span className={`px-2 py-1 rounded-full text-sm ${status.className}`}>
+                                    {status.text}
                                 </span>
                             </p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Tanggal</p>
-                            <p class="font-medium dark:text-gray-100">
-                                ${new Date(attendance.date).toLocaleDateString('id-ID')}
-                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Dibuat pada</p>
+                            <p className="font-medium dark:text-gray-100">{formatDateTime(attendance.created_at)}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Diperbarui pada</p>
+                            <p className="font-medium dark:text-gray-100">{formatDateTime(attendance.updated_at) || '-'}</p>
                         </div>
                     </div>
                 </div>
 
-                <div>
-                    <h3 class="text-lg font-semibold mb-2 dark:text-white text-gray-900">Verifikasi Wajah</h3>
-                    <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Status</p>
-                                <p class="font-medium ${attendance.faceVerification.status
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'}">
-                                    ${attendance.faceVerification.status ? 'Terverifikasi' : 'Tidak Terverifikasi'}
-                                </p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Confidence</p>
-                                <p class="font-medium dark:text-gray-100">${(attendance.faceVerification.confidence * 100).toFixed(2)}%</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-semibold mb-2 dark:text-white text-gray-900">Riwayat Lokasi</h3>
-                    <div class="max-h-60 overflow-y-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700/30">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Waktu</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Koordinat</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Akurasi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                ${attendance.locationData.map(location => `
-                                    <tr>
-                                        <td class="px-4 py-2 text-sm dark:text-gray-300">
-                                            ${new Date(location.timestamp).toLocaleString()}
-                                        </td>
-                                        <td class="px-4 py-2 text-sm dark:text-gray-300">
-                                            ${location.latitude}, ${location.longitude}
-                                        </td>
-                                        <td class="px-4 py-2 text-sm dark:text-gray-300">
-                                            ${location.accuracy}m
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                ${attendance.status === 'Terlambat' && attendance.lateReason ? `
+                {attendance.face_verification_data && (
                     <div>
-                        <h3 class="text-lg font-semibold mb-2 dark:text-white text-gray-900">Alasan Keterlambatan</h3>
-                        <p class="text-sm bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg dark:text-yellow-100">
-                            ${attendance.lateReason}
-                        </p>
+                        <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Verifikasi Wajah</h3>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Status Verifikasi</p>
+                                    <p className="font-medium dark:text-gray-100">
+                                        {attendance.face_verification_data ? 'Terverifikasi' : 'Tidak Terverifikasi'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Senyum Terdeteksi</p>
+                                    <p className="font-medium dark:text-gray-100">
+                                        {attendance.smile_detected ? 'Ya' : 'Tidak'}
+                                    </p>
+                                </div>
+                            </div>
+                            {typeof attendance.face_verification_data === 'object' && (
+                                <div className="mt-4">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Detail Verifikasi</p>
+                                    <pre className="mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-md text-xs overflow-auto">
+                                        {JSON.stringify(attendance.face_verification_data, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                ` : ''}
+                )}
+
+                {attendance.location_data && (
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Data Lokasi</h3>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
+                            {typeof attendance.location_data === 'object' && (
+                                <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded-md text-xs overflow-auto">
+                                    {JSON.stringify(attendance.location_data, null, 2)}
+                                </pre>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
-        `,
-        width: '800px',
-        showCloseButton: true,
-        showConfirmButton: false
-    });
+        </Modal>
+    );
 };
 
-export default showAttendanceDetails;
+export default AttendanceDetailModal;

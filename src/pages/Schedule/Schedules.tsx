@@ -86,7 +86,7 @@ const Schedules: React.FC = () => {
         setCurrentSchedule(schedule);
         Swal.fire({
             title: 'Konfirmasi Penghapusan',
-            text: `Apakah anda yakin ingin menghapus jadwal "${schedule.course?.course_name || ''}" di ruangan ${schedule.room}?`,
+            text: `Apakah anda yakin ingin menghapus jadwal "${schedule.course?.course_name || ''}" di ruangan ${schedule.room?.name || ''}?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#EF4444',
@@ -103,29 +103,29 @@ const Schedules: React.FC = () => {
     const handleDeleteConfirm = async (scheduleId: number): Promise<void> => {
         try {
             setLoading(true);
-
-            // Log untuk debugging
-            console.log('Deleting schedule with ID:', scheduleId);
-
-            // Panggil API delete
             await scheduleApi.deleteSchedule(scheduleId);
-
-            // Update state setelah berhasil hapus
             setSchedules(schedules.filter(s => s.schedule_id !== scheduleId));
-
             showAlert('Terhapus!', 'Jadwal telah dihapus.', 'success');
         } catch (error: unknown) {
             console.error('Failed to delete schedule:', error);
-
             let errorMessage = 'Gagal menghapus jadwal.';
             if (error instanceof Error) {
                 errorMessage = `Gagal menghapus jadwal: ${error.message}`;
             }
-
             showAlert('Error!', errorMessage, 'error');
         } finally {
             setLoading(false);
         }
+    };
+
+    // Function to format date for display
+    const formatDate = (dateString: string): string => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
     };
 
     const scheduleColumns: Column[] = [
@@ -150,6 +150,7 @@ const Schedules: React.FC = () => {
             header: 'Bab/Materi',
             accessor: 'chapter',
             minWidth: '150px',
+            cell: (item: ScheduleRead) => item.chapter || '-'
         },
         {
             header: 'Hari',
@@ -164,9 +165,16 @@ const Schedules: React.FC = () => {
             cell: (item: ScheduleRead) => `${item.start_time} - ${item.end_time}`
         },
         {
+            header: 'Tanggal',
+            accessor: 'schedule_date',
+            minWidth: '150px',
+            cell: (item: ScheduleRead) => formatDate(item.schedule_date)
+        },
+        {
             header: 'Ruangan',
-            accessor: 'room',
+            accessor: 'room.name',
             minWidth: '120px',
+            cell: (item: ScheduleRead) => item.room?.name || 'N/A'
         },
         {
             header: 'Tanggal Dibuat',
@@ -214,7 +222,7 @@ const Schedules: React.FC = () => {
                 className="shadow-sm"
                 searchable
                 filterable
-                searchFields={['course.course_name', 'instructor.full_name', 'room', 'chapter']}
+                searchFields={['course.course_name', 'instructor.full_name', 'room.name', 'chapter']}
                 renderActions={(schedule: ScheduleRead) => (
                     <div className="flex space-x-2">
                         <button

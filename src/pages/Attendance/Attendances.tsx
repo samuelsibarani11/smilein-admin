@@ -1,148 +1,212 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DynamicTable from '../../components/Tables/DynamicTable';
 import { Column } from '../../types/table';
-import showAttendanceDetails from '../../components/Attendances/DetailAttendanceModal';
-import Swal from 'sweetalert2';
+import AttendanceDetailModal from '../../components/Attendances/DetailAttendanceModal';
+import CreateAttendanceModal from '../../components/Attendances/CreateAttendanceModel';
 import UpdateAttendanceModal from '../../components/Attendances/EditAttendanceModal';
+import { getAttendances, updateAttendance } from '../../api/attendanceApi';
+import { getInstructorCourse } from '../../api/instructorCourseApi';
+import { AttendanceWithScheduleRead, AttendanceUpdate } from '../../types/attendance';
+import Swal from 'sweetalert2';
+import { format } from 'date-fns';
+import { jwtDecode } from 'jwt-decode';
 
-interface Attendance {
-    id: number;
-    studentId: string;
-    studentName: string;
-    course: string;
-    date: string;
-    checkIn: string;
-    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
-    locationData: {
-        latitude: number;
-        longitude: number;
-        accuracy: number;
-        timestamp: string;
-    }[];
-    faceVerification: {
-        status: boolean;
-        confidence: number;
-        timestamp: string;
-    };
-    major: string;
-    lateReason?: string;
+// Define the token structure
+interface DecodedToken {
+    user_id: number;
+    user_type: string; // Add role to check if user is admin
+    // Add other properties from your token if needed
 }
 
-const sampleAttendances: Attendance[] = [
-    {
-        id: 1,
-        studentId: '2020001',
-        studentName: 'John Doe',
-        course: 'Algoritma dan Pemrograman',
-        date: '2024-01-05',
-        checkIn: '08:00:00',
-        status: 'Hadir',
-        locationData: [
-            {
-                latitude: -6.2088,
-                longitude: 106.8456,
-                accuracy: 10,
-                timestamp: '2024-01-05T08:00:00Z'
-            }
-        ],
-        faceVerification: {
-            status: true,
-            confidence: 0.98,
-            timestamp: '2024-01-05T08:00:00Z'
-        },
-        major: 'Teknik Informatika'
-    },
-    {
-        id: 2,
-        studentId: '2020002',
-        studentName: 'Jane Smith',
-        course: 'Basis Data',
-        date: '2024-01-05',
-        checkIn: '10:15:00',
-        status: 'Terlambat',
-        locationData: [
-            {
-                latitude: -6.2089,
-                longitude: 106.8457,
-                accuracy: 15,
-                timestamp: '2024-01-05T10:15:00Z'
-            }
-        ],
-        faceVerification: {
-            status: true,
-            confidence: 0.95,
-            timestamp: '2024-01-05T10:15:00Z'
-        },
-        major: 'Sistem Informasi',
-        lateReason: 'Kendala transportasi'
-    },
-    {
-        id: 3,
-        studentId: '2020003',
-        studentName: 'Bob Johnson',
-        course: 'Pemrograman Web',
-        date: '2024-01-06',
-        checkIn: '',
-        status: 'Tidak Hadir',
-        locationData: [],
-        faceVerification: {
-            status: false,
-            confidence: 0,
-            timestamp: ''
-        },
-        major: 'Teknik Informatika'
-    }
-];
-
-const courses = [
-    'Algoritma dan Pemrograman',
-    'Basis Data',
-    'Pemrograman Web',
-    'Struktur Data',
-    'Jaringan Komputer'
-];
+// Define the instructor course structure based on the log output
+interface InstructorCourse {
+    instructor_id: number;
+    course_id: number;
+    instructor_course_id: number;
+    created_at: string;
+    instructor: {
+        nidn: string;
+        full_name: string;
+        username: string;
+        email: string;
+        phone_number: string;
+        profile_picture_url: string;
+    };
+    course: {
+        course_name: string;
+        sks: number;
+    };
+}
 
 const AttendanceHistory: React.FC = () => {
-    const [attendances, setAttendances] = useState<Attendance[]>(sampleAttendances);
+    const [attendances, setAttendances] = useState<AttendanceWithScheduleRead[]>([]);
+    const [instructorCourses, setInstructorCourses] = useState<InstructorCourse[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
-    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-    const [currentAttendance, setCurrentAttendance] = useState<Attendance | null>(null);
     const [searchNim, setSearchNim] = useState('');
     const [searchName, setSearchName] = useState('');
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+    const [currentAttendance, setCurrentAttendance] = useState<AttendanceWithScheduleRead | null>(null);
+    const [instructorId, setInstructorId] = useState<number | null>(null);
+    const [dataFetched, setDataFetched] = useState<boolean>(false);
+    const [isAdmin, setIsAdmin] = useState<boolean>(false); // Add state to track if user is admin
+
+    useEffect(() => {
+        // Get the instructor_id from the token when component mounts
+        const fetchInstructorId = async () => {
+            const token = localStorage.getItem("token");
+
+            if (token) {
+                try {
+                    const decoded = jwtDecode<DecodedToken>(token);
+                    setInstructorId(decoded.user_id);
+
+                    // Check if user is admin
+                    const userIsAdmin = decoded.user_type === 'admin';
+                    setIsAdmin(userIsAdmin);
+
+                    // For instructors, fetch their courses
+                    // For admins, we still fetch instructor courses for the course filter dropdown
+                    if (!userIsAdmin || true) { // Always fetch courses for filtering purposes
+                        try {
+                            const course = await getInstructorCourse(decoded.user_id);
+
+                            // Handle the response properly - wrap in array if it's a single object
+                            if (course) {
+                                setInstructorCourses(Array.isArray(course) ? course : [course]);
+                            } else {
+                                setInstructorCourses([]);
+                            }
+                        } catch (error) {
+                            console.error('Failed to fetch instructor courses:', error);
+                            setInstructorCourses([]); // Set empty array on error
+                            // Don't show error message, just set empty array
+                        }
+                    }
+
+                    setDataFetched(true);
+                }
+                catch (error) {
+                    console.error("Error decoding token:", error);
+                    localStorage.removeItem('token');
+                    setDataFetched(true);
+                }
+            } else {
+                console.log("Token tidak ditemukan di localStorage");
+                setDataFetched(true);
+            }
+        };
+
+        fetchInstructorId();
+    }, []);
+
+    useEffect(() => {
+        if (instructorId !== null) {
+            fetchAttendances();
+        }
+    }, [instructorId]);
+
+    const fetchAttendances = async () => {
+        try {
+            setLoading(true);
+            const response = await getAttendances();
+            // Handle null, undefined or non-array responses gracefully
+            if (response && Array.isArray(response)) {
+                setAttendances(response);
+            } else {
+                // If response is not as expected, set empty array
+                setAttendances([]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch attendances:', error);
+            // Don't show error alert to the user, just set empty array
+            setAttendances([]);
+        } finally {
+            setLoading(false);
+            setDataFetched(true);
+        }
+    };
+
+    // Extract unique course names for the filter dropdown
+    const courseOptions = useMemo(() => {
+        // Create a set of course names from all attendances (for admin) and instructorCourses
+        const uniqueCourses = new Set<string>();
+
+        // If admin, add course names from all attendances
+        if (isAdmin) {
+            attendances.forEach(attendance => {
+                if (attendance.schedule?.course?.course_name) {
+                    uniqueCourses.add(attendance.schedule.course.course_name);
+                }
+            });
+        }
+
+        // Add course names from the instructorCourses array
+        instructorCourses.forEach(course => {
+            if (course.course && course.course.course_name) {
+                uniqueCourses.add(course.course.course_name);
+            }
+        });
+
+        return Array.from(uniqueCourses);
+    }, [attendances, instructorCourses, isAdmin]);
 
     // Filter attendances based on selected filters
+    // For admin: show all attendances
+    // For instructor: show only their assigned course attendances
     const filteredAttendances = useMemo(() => {
-        return attendances.filter(attendance => {
+        // First apply the user role filter
+        let roleFilteredAttendances = attendances;
+
+        // If not admin, filter by instructor's courses
+        if (!isAdmin) {
+            // Get the set of instructor_course_ids for this instructor
+            const instructorCourseIds = new Set(
+                instructorCourses.map(course => course.instructor_course_id)
+            );
+
+            // Filter attendances to only those from this instructor's courses
+            roleFilteredAttendances = attendances.filter(attendance => {
+                return attendance.schedule?.instructor.instructor_id &&
+                    instructorCourseIds.has(attendance.schedule.instructor.instructor_id);
+            });
+        }
+
+        // Then apply the user-selected filters
+        return roleFilteredAttendances.filter(attendance => {
             const matchesDate = !selectedDate || attendance.date === selectedDate;
-            const matchesCourse = !selectedCourse || attendance.course === selectedCourse;
+            const matchesCourse = !selectedCourse ||
+                (attendance.schedule?.course?.course_name === selectedCourse);
             const matchesStatus = !selectedStatus || attendance.status === selectedStatus;
 
             // Separate filters for studentId and studentName
             const matchesNim = !searchNim ||
-                attendance.studentId.toLowerCase().includes(searchNim.toLowerCase());
+                (attendance.student?.nim && attendance.student.nim.toLowerCase().includes(searchNim.toLowerCase()));
             const matchesName = !searchName ||
-                attendance.studentName.toLowerCase().includes(searchName.toLowerCase());
+                (attendance.student?.full_name && attendance.student.full_name.toLowerCase().includes(searchName.toLowerCase()));
 
             return matchesDate && matchesCourse && matchesStatus && matchesNim && matchesName;
         });
-    }, [attendances, selectedDate, selectedCourse, selectedStatus, searchNim, searchName]);
+    }, [attendances, selectedDate, selectedCourse, selectedStatus, searchNim, searchName, instructorCourses, isAdmin]);
 
-    const handleShowDetails = (attendance: Attendance) => {
-        showAttendanceDetails(attendance);
+    const handleShowDetails = (attendance: AttendanceWithScheduleRead) => {
+        setCurrentAttendance(attendance);
+        setIsDetailModalOpen(true);
     };
 
-    const handleUpdateAttendance = async (attendanceId: number, attendanceData: Partial<Attendance>): Promise<void> => {
-        try {
-            // Simulate an API call to update attendance
-            const updatedAttendances = attendances.map(item =>
-                item.id === attendanceId
-                    ? { ...item, ...attendanceData }
-                    : item
-            );
+    const handleEdit = (attendance: AttendanceWithScheduleRead) => {
+        setCurrentAttendance(attendance);
+        setIsUpdateModalOpen(true);
+    };
 
-            setAttendances(updatedAttendances);
+    const handleUpdateAttendance = async (attendanceId: number, attendanceData: AttendanceUpdate): Promise<void> => {
+        try {
+            await updateAttendance(attendanceId, attendanceData);
+            await fetchAttendances(); // Refresh data after update
 
             // Show success alert
             await Swal.fire({
@@ -164,48 +228,96 @@ const AttendanceHistory: React.FC = () => {
         }
     };
 
-    const handleEdit = (attendance: Attendance) => {
-        setCurrentAttendance(attendance);
-        setIsUpdateModalOpen(true);
+    // Format date as day/month/year
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
+        try {
+            return format(new Date(dateString), 'dd/MM/yyyy');
+        } catch (error) {
+            return dateString;
+        }
     };
 
-    // Format date as month/day/year
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        const month = date.getMonth() + 1; // getMonth() returns 0-11
-        const day = date.getDate();
-        const year = date.getFullYear();
-        return `${month}/${day}/${year}`;
+    // Format time
+    const formatTime = (timeString: string | null) => {
+        if (!timeString) return '-';
+        return timeString;
+    };
+
+    // Map status to display values and styles
+    const getStatusDisplay = (status: string) => {
+        switch (status.toUpperCase()) {
+            case 'PRESENT':
+                return {
+                    text: 'Hadir',
+                    className: 'bg-green-100 text-green-800'
+                };
+            case 'LATE':
+                return {
+                    text: 'Terlambat',
+                    className: 'bg-yellow-100 text-yellow-800'
+                };
+            case 'ABSENT':
+                return {
+                    text: 'Tidak Hadir',
+                    className: 'bg-red-100 text-red-800'
+                };
+            default:
+                return {
+                    text: status,
+                    className: 'bg-gray-100 text-gray-800'
+                };
+        }
     };
 
     const attendanceColumns: Column[] = [
         {
-            header: 'ID Kehadiran',
-            accessor: 'id',
-            minWidth: '100px'
-        },
-        {
             header: 'NIM',
-            accessor: 'studentId',
-            minWidth: '120px'
+            accessor: 'student.nim',
+            minWidth: '120px',
+            cell: (item: AttendanceWithScheduleRead) => (
+                <span>
+                    {item.student?.nim || '-'}
+                </span>
+            )
         },
         {
             header: 'Nama',
-            accessor: 'studentName',
-            minWidth: '200px'
+            accessor: 'student.full_name',
+            minWidth: '200px',
+            cell: (item: AttendanceWithScheduleRead) => (
+                <span>
+                    {item.student?.full_name || '-'}
+                </span>
+            )
         },
         {
             header: 'Mata Kuliah',
-            accessor: 'course',
-            minWidth: '200px'
+            accessor: 'schedule.course.course_name',
+            minWidth: '200px',
+            cell: (item: AttendanceWithScheduleRead) => (
+                <span>
+                    {item.schedule?.course?.course_name || '-'}
+                </span>
+            )
         },
         {
             header: 'Tanggal',
             accessor: 'date',
             minWidth: '120px',
-            cell: (item: Attendance) => (
+            cell: (item: AttendanceWithScheduleRead) => (
                 <span>
                     {formatDate(item.date)}
+                </span>
+            )
+        },
+        {
+            header: 'Check-in',
+            accessor: 'check_in_time',
+            minWidth: '120px',
+            cell: (item: AttendanceWithScheduleRead) => (
+                <span>
+                    {formatTime(item.check_in_time)}
                 </span>
             )
         },
@@ -213,32 +325,101 @@ const AttendanceHistory: React.FC = () => {
             header: 'Status',
             accessor: 'status',
             minWidth: '120px',
-            cell: (item: Attendance) => (
-                <span className={`px-2 py-1 rounded-full text-sm ${item.status === 'Hadir' ? 'bg-green-100 text-green-800' :
-                    item.status === 'Terlambat' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                    }`}>
-                    {item.status}
-                </span>
-            )
-        },
-        {
-            header: 'Verifikasi Wajah',
-            accessor: 'faceVerification',
-            minWidth: '150px',
-            cell: (item: Attendance) => (
-                <span className={`px-2 py-1 rounded-full text-sm ${item.faceVerification.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                    {item.faceVerification.status ? 'Terverifikasi' : 'Tidak Terverifikasi'}
-                </span>
-            )
+            cell: (item: AttendanceWithScheduleRead) => {
+                const status = getStatusDisplay(item.status);
+                return (
+                    <span className={`px-2 py-1 rounded-full text-sm ${status.className}`}>
+                        {status.text}
+                    </span>
+                );
+            }
         }
     ];
+
+    // Add instructor name column for admin users
+    if (isAdmin) {
+        attendanceColumns.splice(3, 0, {
+            header: 'Dosen',
+            accessor: 'schedule.instructor.full_name',
+            minWidth: '200px',
+            cell: (item: AttendanceWithScheduleRead) => (
+                <span>
+                    {item.schedule?.instructor?.full_name || '-'}
+                </span>
+            )
+        });
+    }
+
+    // Render function to handle different data states
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            );
+        }
+
+        // If instructor and no courses assigned
+        if (!isAdmin && instructorCourses.length === 0) {
+            return (
+                <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-300">Anda belum ditugaskan untuk mengajar mata kuliah apapun.</p>
+                </div>
+            );
+        }
+
+        // No attendance data matches filters
+        if (filteredAttendances.length === 0) {
+            return (
+                <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-300">Tidak ada data kehadiran yang sesuai dengan filter yang dipilih.</p>
+                </div>
+            );
+        }
+
+        // We have data to display
+        return (
+            <DynamicTable
+                columns={attendanceColumns}
+                data={filteredAttendances}
+                className="shadow-sm"
+                searchable={false} // Disable built-in search since we have our own
+                filterable={true}
+                disableBuiltInFilter={true} // Disable built-in filtering
+                renderActions={(attendance: AttendanceWithScheduleRead) => (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => handleShowDetails(attendance)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                            Detail
+                        </button>
+                        <button
+                            onClick={() => handleEdit(attendance)}
+                            className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
+                        >
+                            Edit
+                        </button>
+                    </div>
+                )}
+            />
+        );
+    };
 
     return (
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Riwayat Kehadiran</h2>
+                {/* Only show Add Attendance button if user is admin */}
+                {isAdmin && (
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    >
+                        Tambah Kehadiran
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -264,7 +445,7 @@ const AttendanceHistory: React.FC = () => {
                             className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 pr-10 outline-none focus:border-primary appearance-none shadow-sm"
                         >
                             <option value="">Semua Mata Kuliah</option>
-                            {courses.map((course, index) => (
+                            {courseOptions.map((course, index) => (
                                 <option key={index} value={course}>{course}</option>
                             ))}
                         </select>
@@ -287,9 +468,9 @@ const AttendanceHistory: React.FC = () => {
                             className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 pr-10 outline-none focus:border-primary appearance-none shadow-sm"
                         >
                             <option value="">Semua Status</option>
-                            <option value="Hadir">Hadir</option>
-                            <option value="Terlambat">Terlambat</option>
-                            <option value="Tidak Hadir">Tidak Hadir</option>
+                            <option value="PRESENT">Hadir</option>
+                            <option value="LATE">Terlambat</option>
+                            <option value="ABSENT">Tidak Hadir</option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
                             <svg className="h-4 w-4 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
@@ -326,38 +507,37 @@ const AttendanceHistory: React.FC = () => {
                 </div>
             </div>
 
-            <DynamicTable
-                columns={attendanceColumns}
-                data={filteredAttendances}
-                className="shadow-sm"
-                searchable={false} // Disable built-in search since we have our own
-                filterable={true}
-                disableBuiltInFilter={true} // Disable built-in filtering
-                renderActions={(attendance: Attendance) => (
-                    <div className="flex space-x-2">
-                        <button
-                            onClick={() => handleShowDetails(attendance)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                        >
-                            Detail
-                        </button>
-                        <button
-                            onClick={() => handleEdit(attendance)}
-                            className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
-                        >
-                            Edit
-                        </button>
-                    </div>
-                )}
-            />
+            {renderContent()}
 
-            {/* Update Attendance Modal */}
-            <UpdateAttendanceModal
-                isOpen={isUpdateModalOpen}
-                onClose={() => setIsUpdateModalOpen(false)}
-                currentAttendance={currentAttendance}
-                onUpdateAttendance={handleUpdateAttendance}
-            />
+            {/* Detail Modal */}
+            {currentAttendance && (
+                <AttendanceDetailModal
+                    isOpen={isDetailModalOpen}
+                    onClose={() => setIsDetailModalOpen(false)}
+                    attendance={currentAttendance}
+                />
+            )}
+
+            {/* Create Modal - Only render if user is admin */}
+            {isAdmin && (
+                <CreateAttendanceModal
+                    isOpen={isCreateModalOpen}
+                    onClose={() => setIsCreateModalOpen(false)}
+                    onSuccess={fetchAttendances}
+                    instructorId={instructorId || undefined}
+                    instructorCourses={instructorCourses}
+                />
+            )}
+
+            {/* Update Modal */}
+            {currentAttendance && (
+                <UpdateAttendanceModal
+                    isOpen={isUpdateModalOpen}
+                    onClose={() => setIsUpdateModalOpen(false)}
+                    currentAttendance={currentAttendance}
+                    onUpdateAttendance={handleUpdateAttendance}
+                />
+            )}
         </div>
     );
 };
