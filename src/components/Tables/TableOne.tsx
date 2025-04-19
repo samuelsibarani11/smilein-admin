@@ -1,7 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getAttendances } from '../../api/attendanceApi';
+import { getInstructorCourse } from '../../api/instructorCourseApi';
 import { AttendanceWithScheduleRead } from '../../types/attendance';
-import Loader from '../../common/Loader';
+import { jwtDecode } from 'jwt-decode';
+
+// Define the token structure
+interface DecodedToken {
+  user_id: number;
+  user_type: string;
+}
+
+// Define instructor course structure
+interface InstructorCourse {
+  instructor_id: number;
+  course_id: number;
+  instructor_course_id: number;
+  course: {
+    course_id: number;
+    course_name: string;
+    sks: number;
+  };
+}
 
 interface CourseAttendance {
   code: string;
@@ -15,10 +34,47 @@ interface CourseAttendance {
 
 const TableOne: React.FC = () => {
   const [attendanceData, setAttendanceData] = useState<AttendanceWithScheduleRead[]>([]);
+  const [instructorCourses, setInstructorCourses] = useState<InstructorCourse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [instructorId, setInstructorId] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const itemsPerPage = 5;
+
+  // Get instructor ID from token
+  useEffect(() => {
+    const fetchInstructorId = async () => {
+      const token = localStorage.getItem("token");
+
+      if (token) {
+        try {
+          const decoded = jwtDecode<DecodedToken>(token);
+          setInstructorId(decoded.user_id);
+
+          // Check if user is admin
+          const userIsAdmin = decoded.user_type === 'admin';
+          setIsAdmin(userIsAdmin);
+
+          // Only fetch instructor courses if not admin
+          if (!userIsAdmin) {
+            try {
+              const courses = await getInstructorCourse(decoded.user_id);
+              setInstructorCourses(Array.isArray(courses) ? courses : [courses]);
+            } catch (error) {
+              console.error('Failed to fetch instructor courses:', error);
+              setInstructorCourses([]);
+            }
+          }
+        } catch (error) {
+          console.error("Error decoding token:", error);
+          localStorage.removeItem('token');
+        }
+      }
+    };
+
+    fetchInstructorId();
+  }, []);
 
   // Fetch attendance data
   useEffect(() => {
@@ -35,11 +91,19 @@ const TableOne: React.FC = () => {
       }
     };
 
-    fetchData();
-  }, []);
+    // Only fetch data once we have the instructor ID
+    if (instructorId !== null) {
+      fetchData();
+    }
+  }, [instructorId]);
 
   // Process attendance data to get course statistics
   const courseAttendanceStats = useMemo(() => {
+    // Create a set of course IDs taught by this instructor
+    const instructorCourseIds = new Set(
+      instructorCourses.map(course => course.course_id)
+    );
+
     // Create a map to group attendance by course
     const courseMap = new Map<string, {
       code: string;
@@ -47,13 +111,19 @@ const TableOne: React.FC = () => {
       records: AttendanceWithScheduleRead[];
     }>();
 
-    // Group attendance records by course
+    // Filter to only include courses taught by this instructor (unless admin)
     attendanceData.forEach(record => {
       if (!record.schedule?.course) return;
 
+      const courseId = record.schedule.course.course_id;
+
+      // Skip if not admin and not instructor's course
+      if (!isAdmin && !instructorCourseIds.has(courseId)) {
+        return;
+      }
+
       // Convert course_id to string to use as map key
-      const courseCode = record.schedule.course.course_id ?
-        record.schedule.course.course_id.toString() : 'UNKNOWN';
+      const courseCode = courseId ? courseId.toString() : 'UNKNOWN';
       const courseName = record.schedule.course.course_name || 'Unknown Course';
 
       if (!courseMap.has(courseCode)) {
@@ -107,7 +177,7 @@ const TableOne: React.FC = () => {
 
     // Sort by attendance percentage (highest to lowest)
     return stats.sort((a, b) => b.attendancePercentage - a.attendancePercentage);
-  }, [attendanceData]);
+  }, [attendanceData, instructorCourses, isAdmin]);
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -124,7 +194,18 @@ const TableOne: React.FC = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
 
-  if (loading) return <Loader />;
+  if (loading) {
+    return (
+      <div className="rounded-sm border border-stroke bg-white p-5 shadow-default dark:border-strokedark dark:bg-boxdark">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-t-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Memuat data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -137,7 +218,11 @@ const TableOne: React.FC = () => {
   if (courseAttendanceStats.length === 0) {
     return (
       <div className="rounded-sm border border-stroke bg-white p-5 shadow-default dark:border-strokedark dark:bg-boxdark">
-        <div className="text-center dark:text-white">Tidak ada data kehadiran tersedia.</div>
+        <div className="text-center dark:text-white">
+          {isAdmin
+            ? "Tidak ada data kehadiran tersedia."
+            : "Anda belum memiliki data kehadiran untuk mata kuliah yang Anda ajar."}
+        </div>
       </div>
     );
   }
@@ -145,7 +230,7 @@ const TableOne: React.FC = () => {
   return (
     <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1 h-full flex flex-col">
       <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
-        Kehadiran Mata Kuliah
+        {isAdmin ? "Kehadiran Mata Kuliah (Semua)" : "Kehadiran Mata Kuliah Anda"}
       </h4>
 
       <div className="flex flex-col flex-grow">
@@ -189,8 +274,8 @@ const TableOne: React.FC = () => {
             return (
               <div
                 className={`grid grid-cols-6 ${key === currentItems.length - 1
-                    ? ''
-                    : 'border-b border-stroke dark:border-strokedark'
+                  ? ''
+                  : 'border-b border-stroke dark:border-strokedark'
                   }`}
                 key={key}
               >
@@ -226,10 +311,10 @@ const TableOne: React.FC = () => {
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
                   <p className={`${course.attendancePercentage >= 90
-                      ? 'text-meta-3'
-                      : course.attendancePercentage >= 80
-                        ? 'text-meta-5'
-                        : 'text-meta-1'
+                    ? 'text-meta-3'
+                    : course.attendancePercentage >= 80
+                      ? 'text-meta-5'
+                      : 'text-meta-1'
                     }`}>
                     {course.attendancePercentage.toFixed(1)}%
                   </p>
@@ -249,8 +334,8 @@ const TableOne: React.FC = () => {
               onClick={goToPreviousPage}
               disabled={currentPage === 1}
               className={`px-3 py-1 rounded ${currentPage === 1
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white hover:bg-opacity-90'
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-opacity-90'
                 }`}
             >
               Sebelumnya
@@ -262,8 +347,8 @@ const TableOne: React.FC = () => {
               onClick={goToNextPage}
               disabled={currentPage === totalPages}
               className={`px-3 py-1 rounded ${currentPage === totalPages
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white hover:bg-opacity-90'
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-opacity-90'
                 }`}
             >
               Selanjutnya

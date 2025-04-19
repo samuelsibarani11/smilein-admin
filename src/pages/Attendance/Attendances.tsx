@@ -4,7 +4,7 @@ import { Column } from '../../types/table';
 import AttendanceDetailModal from '../../components/Attendances/DetailAttendanceModal';
 import CreateAttendanceModal from '../../components/Attendances/CreateAttendanceModel';
 import UpdateAttendanceModal from '../../components/Attendances/EditAttendanceModal';
-import { getAttendances, updateAttendance } from '../../api/attendanceApi';
+import { getAttendances, updateAttendance, deleteAttendance } from '../../api/attendanceApi';
 import { getInstructorCourse } from '../../api/instructorCourseApi';
 import { AttendanceWithScheduleRead, AttendanceUpdate } from '../../types/attendance';
 import Swal from 'sweetalert2';
@@ -201,6 +201,53 @@ const AttendanceHistory: React.FC = () => {
     const handleEdit = (attendance: AttendanceWithScheduleRead) => {
         setCurrentAttendance(attendance);
         setIsUpdateModalOpen(true);
+    };
+
+    const handleDelete = async (attendance: AttendanceWithScheduleRead) => {
+        // Konfirmasi penghapusan dengan SweetAlert2
+        const result = await Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: `Hapus data kehadiran untuk ${attendance.student?.full_name || '-'} pada ${formatDate(attendance.date)}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3B82F6',
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal'
+        });
+
+        // Jika pengguna membatalkan, tidak melakukan apa-apa
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        try {
+            // Panggil API untuk menghapus data
+            await deleteAttendance(attendance.attendance_id);
+
+            // Refresh data setelah penghapusan berhasil
+            await fetchAttendances();
+
+            // Tampilkan pesan sukses
+            await Swal.fire({
+                title: 'Berhasil!',
+                text: 'Data kehadiran berhasil dihapus',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3B82F6'
+            });
+        } catch (error) {
+            console.error('Failed to delete attendance:', error);
+
+            // Tampilkan pesan error
+            await Swal.fire({
+                title: 'Error!',
+                text: 'Gagal menghapus data kehadiran',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3B82F6'
+            });
+        }
     };
 
     const handleUpdateAttendance = async (attendanceId: number, attendanceData: AttendanceUpdate): Promise<void> => {
@@ -400,6 +447,12 @@ const AttendanceHistory: React.FC = () => {
                             className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
                         >
                             Edit
+                        </button>
+                        <button
+                            onClick={() => handleDelete(attendance)}
+                            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                        >
+                            Hapus
                         </button>
                     </div>
                 )}

@@ -18,8 +18,8 @@ interface DecodedToken {
   admin_id?: number;
 }
 
-// Create an adapter function to convert InstructorRead to AdminRead format
-const instructorToAdminFormat = (instructor: InstructorRead): AdminRead => {
+// Create an adapter function to convert InstructorRead to AdminRead format and preserve the nidn field
+const instructorToAdminFormat = (instructor: InstructorRead): AdminRead & { nidn?: string } => {
   return {
     admin_id: instructor.instructor_id,
     full_name: instructor.full_name,
@@ -30,7 +30,8 @@ const instructorToAdminFormat = (instructor: InstructorRead): AdminRead => {
     is_active: instructor.is_active,
     created_at: instructor.created_at,
     updated_at: instructor.updated_at,
-    password: '' // This is required by AdminRead but not used for display
+    password: '', // This is required by AdminRead but not used for display
+    nidn: instructor.nidn // Add the NIDN field so it's available in the converted data
   };
 };
 

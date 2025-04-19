@@ -166,6 +166,9 @@ const AttendanceChart: React.FC = () => {
     return data.length > 0 ? Math.round(data.reduce((a, b) => a + b, 0) / data.length) : 0;
   };
 
+  // Chart colors
+  const chartColors = ['#3C50E0', '#DC2626', '#F97316'];
+
   // Chart options
   const options: ApexOptions = {
     chart: {
@@ -185,7 +188,7 @@ const AttendanceChart: React.FC = () => {
         show: false,
       },
     },
-    colors: ['#3C50E0', '#DC2626', '#F97316'],
+    colors: chartColors,
     stroke: {
       width: 2,
       curve: 'smooth',
@@ -207,13 +210,20 @@ const AttendanceChart: React.FC = () => {
     },
     markers: {
       size: 4,
-      colors: '#fff',
-      strokeWidth: 3,
-      strokeOpacity: 0.9,
+      colors: chartColors,
+      strokeColors: '#FFFFFF',
+      strokeWidth: 2,
+      strokeOpacity: 1,
       fillOpacity: 1,
+      discrete: [],
+      shape: "circle",
+      radius: 2,
+      offsetX: 0,
+      offsetY: 0,
       hover: {
         size: 6,
       },
+      showNullDataPoints: true, // Memastikan titik kosong tetap ditampilkan
     },
     xaxis: {
       type: 'category',

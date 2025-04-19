@@ -1,39 +1,48 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { AdminRead, AdminUpdate } from '../../types/admin';
+import { InstructorRead, InstructorUpdate } from '../../types/instructor';
 import { updateAdmin } from '../../api/adminApi';
 import { updateInstructor } from '../../api/instructorApi';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
 interface PersonalInformationProps {
-    initialData?: AdminRead;
+    initialData?: any;
     userType: string | null;
 }
 
 const PersonalInformation: React.FC<PersonalInformationProps> = ({
-    initialData = {
-        admin_id: 0,
-        full_name: '',
-        username: '',
-        created_at: '',
-        updated_at: ''
-    },
+    initialData,
     userType
 }) => {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState<AdminUpdate>({
-        full_name: initialData.full_name,
-        username: initialData.username,
+
+    // Initialize form data with empty values
+    const [formData, setFormData] = useState({
+        full_name: '',
+        username: '',
+        nidn: '',
+        email: '',
+        phone_number: '',
     });
-    const [_, setBio] = useState('');
+
     const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
-        // Update form data when initial data changes
-        setFormData({
-            full_name: initialData.full_name,
-            username: initialData.username,
-        });
+        if (!initialData) return;
+
+        // Extract values from initialData
+        // For instructor data, we need to handle the structure correctly
+        const newFormData = {
+            full_name: initialData.full_name || '',
+            username: initialData.username || '',
+            // Properly handle NIDN from the appropriate source (either already in initialData or from instructor_info)
+            nidn: initialData.nidn || '',
+            email: initialData.email || '',
+            phone_number: initialData.phone_number || '',
+        };
+
+        setFormData(newFormData);
     }, [initialData]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -43,14 +52,10 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
             setIsEditing(true);
         }
 
-        if (name === 'bio') {
-            setBio(value);
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [name]: value
-            }));
-        }
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleSaveClick = () => {
@@ -77,15 +82,34 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            if (!initialData.admin_id) {
-                throw new Error("User ID is missing");
+            if (!initialData) {
+                throw new Error("User data is missing");
             }
+
+            // We need to use either admin_id or instructor_id based on what's available
+            const userId = initialData.admin_id || initialData.instructor_id;
+            if (!userId) throw new Error("User ID is missing");
 
             // Determine which API to use based on user type
             if (userType === "admin") {
-                await updateAdmin(initialData.admin_id, formData);
+                // For admin, only send admin-specific fields
+                const adminData: AdminUpdate = {
+                    full_name: formData.full_name,
+                    username: formData.username
+                };
+
+                await updateAdmin(userId, adminData);
             } else if (userType === "instructor") {
-                await updateInstructor(initialData.admin_id, formData);
+                // For instructor, send all fields including instructor-specific ones
+                const instructorData: InstructorUpdate = {
+                    full_name: formData.full_name,
+                    username: formData.username,
+                    nidn: formData.nidn,
+                    email: formData.email,
+                    phone_number: formData.phone_number,
+                };
+
+                await updateInstructor(userId, instructorData);
             } else {
                 throw new Error("Unknown user type");
             }
@@ -177,7 +201,7 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
                                     name="full_name"
                                     id="fullName"
                                     placeholder="Full Name"
-                                    value={formData.full_name || ''}
+                                    value={formData.full_name}
                                     onChange={handleInputChange}
                                 />
                             </div>
@@ -197,10 +221,69 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({
                             name="username"
                             id="Username"
                             placeholder="Username"
-                            value={formData.username || ''}
+                            value={formData.username}
                             onChange={handleInputChange}
                         />
                     </div>
+
+                    {/* Show instructor fields only if userType is instructor */}
+                    {userType === "instructor" && (
+                        <>
+                            <div className="mb-5.5">
+                                <label
+                                    className="mb-3 block text-sm font-medium text-black dark:text-white"
+                                    htmlFor="NIDN"
+                                >
+                                    NIDN
+                                </label>
+                                <input
+                                    className="w-full rounded border border-stroke bg-gray py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                                    type="text"
+                                    name="nidn"
+                                    id="NIDN"
+                                    placeholder="NIDN"
+                                    value={formData.nidn}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+
+                            <div className="mb-5.5">
+                                <label
+                                    className="mb-3 block text-sm font-medium text-black dark:text-white"
+                                    htmlFor="Email"
+                                >
+                                    Email
+                                </label>
+                                <input
+                                    className="w-full rounded border border-stroke bg-gray py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                                    type="email"
+                                    name="email"
+                                    id="Email"
+                                    placeholder="Email Address"
+                                    value={formData.email}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+
+                            <div className="mb-5.5">
+                                <label
+                                    className="mb-3 block text-sm font-medium text-black dark:text-white"
+                                    htmlFor="PhoneNumber"
+                                >
+                                    Phone Number
+                                </label>
+                                <input
+                                    className="w-full rounded border border-stroke bg-gray py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                                    type="tel"
+                                    name="phone_number"
+                                    id="PhoneNumber"
+                                    placeholder="Phone Number"
+                                    value={formData.phone_number}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+                        </>
+                    )}
 
                     <div className="flex justify-end gap-4.5">
                         <button
