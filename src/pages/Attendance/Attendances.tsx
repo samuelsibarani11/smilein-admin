@@ -354,7 +354,7 @@ const AttendanceHistory: React.FC = () => {
             minWidth: '120px',
             cell: (item: AttendanceWithScheduleRead) => (
                 <span>
-                    {formatDate(item.date)}
+                    {formatDate(item.schedule.schedule_date)}
                 </span>
             )
         },

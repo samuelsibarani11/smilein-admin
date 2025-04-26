@@ -68,6 +68,25 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
 
     const status = getStatusDisplay(attendance.status);
 
+    // Generate full image URL with backend URL
+    const getFullImageUrl = (imagePath: string | null): string => {
+        if (!imagePath) return ''; // Return empty string instead of null
+
+        // If the path already starts with http:// or https://, return it as is
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+        }
+
+        // Extract filename from the path
+        const filename = imagePath.split('/').pop();
+
+        // Backend URL - change this to your environment variable if available
+        const BACKEND_URL = 'http://localhost:8000';
+
+        // Return the complete path to the attendance images folder with backend URL
+        return `${BACKEND_URL}/uploads/attendance_images/${filename}`;
+    };
+
     return (
         <Modal
             isOpen={isOpen}
@@ -139,10 +158,6 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                             <p className="font-medium dark:text-gray-100">{formatTime(attendance.check_in_time) || 'Tidak Check-in'}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Check-out</p>
-                            <p className="font-medium dark:text-gray-100">{formatTime(attendance.check_out_time) || 'Tidak Check-out'}</p>
-                        </div>
-                        <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
                             <p className="font-medium">
                                 <span className={`px-2 py-1 rounded-full text-sm ${status.className}`}>
@@ -160,6 +175,25 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Captured Image Section */}
+                {attendance.image_captured_url && (
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Foto Kehadiran</h3>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg flex justify-center">
+                            <div className="max-w-md">
+                                <img
+                                    src={getFullImageUrl(attendance.image_captured_url)}
+                                    alt="Foto Kehadiran"
+                                    className="rounded-lg shadow-md max-h-96 object-contain"
+                                />
+                                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
+                                    Foto diambil saat check-in
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {attendance.face_verification_data && (
                     <div>
