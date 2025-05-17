@@ -78,3 +78,13 @@ export const getNextStudent = async (studentId: number): Promise<StudentRead> =>
     throw error;
   }
 };
+
+export const getStudentProfilePicture = async (studentId: number): Promise<{profile_picture_url: string | null}> => {
+  try {
+    const response = await apiClient.get(`/students/${studentId}/profile-picture`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch student profile picture', error);
+    throw error;
+  }
+};

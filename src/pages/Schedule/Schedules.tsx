@@ -7,10 +7,6 @@ import Swal from 'sweetalert2';
 import CreateScheduleModal from '../../components/Schedule/CreateScheduleModal';
 import UpdateScheduleModal from '../../components/Schedule/UpdateScheduleModal';
 
-const DAYS_OF_WEEK = [
-    '', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
-];
-
 const Schedules: React.FC = () => {
     const [schedules, setSchedules] = useState<ScheduleRead[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -128,6 +124,7 @@ const Schedules: React.FC = () => {
         });
     };
 
+
     const scheduleColumns: Column[] = [
         {
             header: 'ID Jadwal',
@@ -151,12 +148,6 @@ const Schedules: React.FC = () => {
             accessor: 'chapter',
             minWidth: '150px',
             cell: (item: ScheduleRead) => item.chapter || '-'
-        },
-        {
-            header: 'Hari',
-            accessor: 'day_of_week',
-            minWidth: '100px',
-            cell: (item: ScheduleRead) => DAYS_OF_WEEK[item.day_of_week] || 'N/A'
         },
         {
             header: 'Waktu',

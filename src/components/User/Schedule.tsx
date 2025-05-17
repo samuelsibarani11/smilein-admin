@@ -7,10 +7,6 @@ interface ScheduleProps {
     studentData: StudentRead | null;
 }
 
-const DAYS_OF_WEEK = [
-    '', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
-];
-
 const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
     const studentId = studentData?.student_id;
 
@@ -45,6 +41,13 @@ const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
             month: 'long',
             day: 'numeric'
         });
+    };
+
+    // Function to get the day name from a date string
+    const getDayName = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', { weekday: 'long' });
     };
 
     return (
@@ -89,7 +92,7 @@ const ScheduleComponent: React.FC<ScheduleProps> = ({ studentData }) => {
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-gray-200">{schedule.course?.course_name || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{schedule.room?.name || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
-                                            {DAYS_OF_WEEK[schedule.day_of_week] || 'N/A'}
+                                            {getDayName(schedule.schedule_date)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
                                             {formatDate(schedule.schedule_date)}

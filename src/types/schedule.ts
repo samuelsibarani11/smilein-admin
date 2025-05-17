@@ -2,17 +2,17 @@
 export interface ScheduleCreate {
   course_id: number;
   instructor_id: number;
-  room_id: number; // Changed from 'room' to 'room_id'
+  room_id: number;
   chapter?: string;
   start_time: string;
   end_time: string;
-  day_of_week: number;
-  schedule_date: string; // Added the new field
+  // day_of_week field removed
+  schedule_date: string;
 }
 
 export interface ScheduleRead {
   schedule_id: number;
-  room: { // Room is now an object with the updated fields
+  room: {
     room_id: number;
     name: string;
     latitude: number;
@@ -20,10 +20,10 @@ export interface ScheduleRead {
     radius: number;
   };
   chapter?: string;
-  day_of_week: number;
+  // day_of_week field removed
   start_time: string;
   end_time: string;
-  schedule_date: string; // Added the new field
+  schedule_date: string;
   created_at: string;
   course: {
     course_id: number;
@@ -38,12 +38,12 @@ export interface ScheduleRead {
 export interface ScheduleUpdate {
   course_id?: number;
   instructor_id?: number;
-  room_id?: number; // Changed from 'room' to 'room_id'
+  room_id?: number;
   chapter?: string;
   start_time?: string;
   end_time?: string;
-  day_of_week?: number;
-  schedule_date?: string; // Added the new field
+  // day_of_week field removed
+  schedule_date?: string;
 }
 
 export interface HTTPValidationError {

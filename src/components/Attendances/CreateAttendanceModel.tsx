@@ -162,10 +162,15 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
     }
   };
 
-  // Get day name from day of week number
-  const getDayName = (dayNumber: number): string => {
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    return days[dayNumber % 7] || String(dayNumber);
+  // Format schedule display text to avoid undefined issues
+  const formatScheduleOption = (schedule: Schedule): string => {
+    const courseName = schedule.course?.course_name || 'Unknown Course';
+    const roomName = schedule.room?.name || '';
+    const startTime = schedule.start_time || '';
+    const endTime = schedule.end_time || '';
+    
+    // Only include the time information, removing day references
+    return `${courseName}, ${startTime}-${endTime} (${roomName})`;
   };
 
   return (
@@ -214,7 +219,7 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
               <option value="">Pilih Jadwal</option>
               {schedules.map((schedule) => (
                 <option key={schedule.schedule_id} value={schedule.schedule_id}>
-                  {schedule.course.course_name} - {getDayName(schedule.day_of_week)}, {schedule.start_time}-{schedule.end_time} ({schedule.room.name})
+                  {formatScheduleOption(schedule)}
                 </option>
               ))}
             </select>
@@ -239,8 +244,7 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
                   {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.instructor.full_name || ''}
                 </li>
                 <li>
-                  <span className="font-semibold">Jadwal:</span>{' '}
-                  {getDayName(schedules.find(s => s.schedule_id === Number(selectedSchedule))?.day_of_week || 0)},{' '}
+                  <span className="font-semibold">Waktu:</span>{' '}
                   {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.start_time || ''} - {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.end_time || ''}
                 </li>
               </ul>

@@ -7,17 +7,6 @@ import * as instructorApi from '../../api/instructorApi';
 import * as roomApi from '../../api/roomApi';
 import { Room } from '../../types/room';
 
-// Days of week values from 1 (Monday) to 7 (Sunday)
-const DAYS_OF_WEEK = [
-    { value: 1, label: 'Senin' },
-    { value: 2, label: 'Selasa' },
-    { value: 3, label: 'Rabu' },
-    { value: 4, label: 'Kamis' },
-    { value: 5, label: 'Jumat' },
-    { value: 6, label: 'Sabtu' },
-    { value: 7, label: 'Minggu' }
-];
-
 interface CreateScheduleModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -51,8 +40,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     const chapterRef = useRef<HTMLInputElement>(null);
     const startTimeRef = useRef<HTMLInputElement>(null);
     const endTimeRef = useRef<HTMLInputElement>(null);
-    const dayOfWeekRef = useRef<HTMLSelectElement>(null);
-    const scheduleDateRef = useRef<HTMLInputElement>(null); // Added reference for the new field
+    const scheduleDateRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -135,8 +123,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
         const roomId = roomIdRef.current?.value;
         const startTime = startTimeRef.current?.value;
         const endTime = endTimeRef.current?.value;
-        const dayOfWeek = dayOfWeekRef.current?.value;
-        const scheduleDate = scheduleDateRef.current?.value; // Added validation for the new field
+        const scheduleDate = scheduleDateRef.current?.value;
 
         if (!courseId || courseId === '') {
             showAlert('Validasi Error', 'Pilih mata kuliah', 'error');
@@ -158,19 +145,8 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             showAlert('Validasi Error', 'Masukkan waktu selesai', 'error');
             return false;
         }
-        if (dayOfWeek === undefined || dayOfWeek === null) {
-            showAlert('Validasi Error', 'Pilih hari', 'error');
-            return false;
-        }
-        if (!scheduleDate) { // Added validation for the new field
+        if (!scheduleDate) {
             showAlert('Validasi Error', 'Masukkan tanggal jadwal', 'error');
-            return false;
-        }
-
-        // Validate day_of_week value
-        const dayValue = parseInt(dayOfWeek, 10);
-        if (isNaN(dayValue) || dayValue < 1 || dayValue > 7) {
-            showAlert('Validasi Error', 'Nilai hari tidak valid (harus 1-7)', 'error');
             return false;
         }
 
@@ -192,8 +168,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             const chapter = chapterRef.current?.value?.trim() || '';
             const startTime = startTimeRef.current?.value || '';
             const endTime = endTimeRef.current?.value || '';
-            const dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0', 10);
-            const scheduleDate = scheduleDateRef.current?.value || ''; // Added the new field
+            const scheduleDate = scheduleDateRef.current?.value || '';
 
             console.log('Submitting schedule data:', {
                 course_id: courseId,
@@ -202,8 +177,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                 chapter,
                 start_time: startTime,
                 end_time: endTime,
-                day_of_week: dayOfWeek,
-                schedule_date: scheduleDate // Added the new field
+                schedule_date: scheduleDate
             });
 
             await onCreateSchedule({
@@ -213,8 +187,7 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                 chapter,
                 start_time: startTime,
                 end_time: endTime,
-                day_of_week: dayOfWeek,
-                schedule_date: scheduleDate // Added the new field
+                schedule_date: scheduleDate
             });
 
             onClose();
@@ -335,22 +308,6 @@ const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                         required
                         disabled={loading}
                     />
-                </div>
-                <div className="col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Hari</label>
-                    <select
-                        ref={dayOfWeekRef}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        required
-                        disabled={loading}
-                    >
-                        <option value="">Pilih Hari</option>
-                        {DAYS_OF_WEEK.map((day) => (
-                            <option key={day.value} value={day.value}>
-                                {day.label}
-                            </option>
-                        ))}
-                    </select>
                 </div>
             </div>
         </Modal>

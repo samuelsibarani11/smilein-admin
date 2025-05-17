@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { StudentRead, StudentUpdate } from '../../types/student';
 import About from '../../components/User/About';
-import Dataset from '../../components/User/Dataset';
 import Schedule from '../../components/User/Schedule';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStudent, getNextStudent, updateStudent } from '../../api/studentApi';
+import { getStudent, getNextStudent, updateStudent, getStudentProfilePicture } from '../../api/studentApi';
 import Swal from 'sweetalert2';
 import UpdateStudentModal from '../../components/User/UpdateStudentModal';
 
@@ -17,11 +16,11 @@ const StudentDetail: React.FC = () => {
     const [activeTab, setActiveTab] = useState<string>('About');
     const [isNavigating, setIsNavigating] = useState<boolean>(false);
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+    const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
     const tabs: string[] = [
         'About',
         'Schedule',
-        'Dataset'
     ];
 
     useEffect(() => {
@@ -30,6 +29,17 @@ const StudentDetail: React.FC = () => {
                 if (id) {
                     const student = await getStudent(parseInt(id, 10));
                     setStudentData(student);
+
+                    // Fetch profile picture
+                    try {
+                        const pictureData = await getStudentProfilePicture(parseInt(id, 10));
+                        if (pictureData && pictureData.profile_picture_url) {
+                            setProfilePicture(formatImageUrl(pictureData.profile_picture_url));
+                        }
+                    } catch (err) {
+                        console.log('No profile picture found, using initials');
+                        // We'll use initials as fallback, so no need to set error
+                    }
                 }
             } catch (err) {
                 console.error('Failed to fetch student details', err);
@@ -41,6 +51,14 @@ const StudentDetail: React.FC = () => {
 
         fetchStudentDetails();
     }, [id]);
+
+    // Helper function to format image URL
+    const formatImageUrl = (url: string | null) => {
+        if (!url) return null;
+        if (url.startsWith('data:')) return url;
+        if (url.startsWith('/')) return `http://localhost:8000${url}`;
+        return url;
+    };
 
     const handleNextStudent = async () => {
         // If currently loading or navigating, don't do anything
@@ -139,8 +157,7 @@ const StudentDetail: React.FC = () => {
                 return <About studentData={studentData} />;
             case 'Schedule':
                 return <Schedule studentData={studentData} />;
-            case 'Dataset':
-                return <Dataset studentData={studentData} />;
+           
             default:
                 return (
                     <div className="mt-6 p-4 md:p-6 border dark:border-gray-700 rounded-lg dark:bg-gray-800">
@@ -171,11 +188,23 @@ const StudentDetail: React.FC = () => {
     return (
         <div className="p-4 md:p-6 bg-white dark:bg-gray-900">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6 mb-6 md:mb-8">
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <span className="text-xl md:text-2xl text-white">
-                        {getInitials(studentData?.full_name)}
-                    </span>
-                </div>
+                {/* Profile Picture */}
+                {profilePicture ? (
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden">
+                        <img
+                            src={profilePicture}
+                            alt={`${studentData?.full_name} profile`}
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                ) : (
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span className="text-xl md:text-2xl text-white">
+                            {getInitials(studentData?.full_name)}
+                        </span>
+                    </div>
+                )}
+
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
@@ -219,6 +248,12 @@ const StudentDetail: React.FC = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                             <span className="text-gray-600 dark:text-gray-400 truncate">{studentData?.username}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                            </svg>
+                            <span className="text-gray-600 dark:text-gray-400">{studentData?.nim}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

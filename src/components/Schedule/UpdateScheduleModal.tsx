@@ -7,17 +7,6 @@ import * as instructorApi from '../../api/instructorApi';
 import * as roomApi from '../../api/roomApi';
 import { Room } from '../../types/room';
 
-// Days of week values from 1 (Monday) to 7 (Sunday)
-const DAYS_OF_WEEK = [
-    { value: 1, label: 'Senin' },
-    { value: 2, label: 'Selasa' },
-    { value: 3, label: 'Rabu' },
-    { value: 4, label: 'Kamis' },
-    { value: 5, label: 'Jumat' },
-    { value: 6, label: 'Sabtu' },
-    { value: 7, label: 'Minggu' }
-];
-
 interface UpdateScheduleModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -53,8 +42,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
     const chapterRef = useRef<HTMLInputElement>(null);
     const startTimeRef = useRef<HTMLInputElement>(null);
     const endTimeRef = useRef<HTMLInputElement>(null);
-    const dayOfWeekRef = useRef<HTMLSelectElement>(null);
-    const scheduleDateRef = useRef<HTMLInputElement>(null); // Added reference for schedule_date field
+    const scheduleDateRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -86,9 +74,6 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                 }
                 if (endTimeRef.current) {
                     endTimeRef.current.value = currentSchedule.end_time || '';
-                }
-                if (dayOfWeekRef.current) {
-                    dayOfWeekRef.current.value = currentSchedule.day_of_week.toString();
                 }
                 if (scheduleDateRef.current && currentSchedule.schedule_date) {
                     // Format date to YYYY-MM-DD for the date input
@@ -174,8 +159,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
         const roomId = roomIdRef.current?.value;
         const startTime = startTimeRef.current?.value;
         const endTime = endTimeRef.current?.value;
-        const dayOfWeek = dayOfWeekRef.current?.value;
-        const scheduleDate = scheduleDateRef.current?.value; // Added validation for schedule_date
+        const scheduleDate = scheduleDateRef.current?.value;
 
         if (!courseId || courseId === '') {
             showAlert('Validasi Error', 'Pilih mata kuliah', 'error');
@@ -197,19 +181,8 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
             showAlert('Validasi Error', 'Masukkan waktu selesai', 'error');
             return false;
         }
-        if (dayOfWeek === undefined || dayOfWeek === null) {
-            showAlert('Validasi Error', 'Pilih hari', 'error');
-            return false;
-        }
-        if (!scheduleDate) { // Added validation for schedule_date
+        if (!scheduleDate) {
             showAlert('Validasi Error', 'Masukkan tanggal jadwal', 'error');
-            return false;
-        }
-
-        // Validate day_of_week value
-        const dayValue = parseInt(dayOfWeek, 10);
-        if (isNaN(dayValue) || dayValue < 1 || dayValue > 7) {
-            showAlert('Validasi Error', 'Nilai hari tidak valid (harus 1-7)', 'error');
             return false;
         }
 
@@ -236,8 +209,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
             const chapter = chapterRef.current?.value?.trim() || '';
             const startTime = startTimeRef.current?.value || '';
             const endTime = endTimeRef.current?.value || '';
-            const dayOfWeek = parseInt(dayOfWeekRef.current?.value || '0', 10);
-            const scheduleDate = scheduleDateRef.current?.value || ''; // Added schedule_date
+            const scheduleDate = scheduleDateRef.current?.value || '';
 
             console.log('Updating schedule data:', {
                 course_id: courseId,
@@ -246,8 +218,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                 chapter,
                 start_time: startTime,
                 end_time: endTime,
-                day_of_week: dayOfWeek,
-                schedule_date: scheduleDate // Added schedule_date
+                schedule_date: scheduleDate
             });
 
             await onUpdateSchedule(currentSchedule.schedule_id, {
@@ -257,8 +228,7 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                 chapter,
                 start_time: startTime,
                 end_time: endTime,
-                day_of_week: dayOfWeek,
-                schedule_date: scheduleDate // Added schedule_date
+                schedule_date: scheduleDate
             });
 
             onClose();
@@ -379,22 +349,6 @@ const UpdateScheduleModal: React.FC<UpdateScheduleModalProps> = ({
                         required
                         disabled={loading}
                     />
-                </div>
-                <div className="col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Hari</label>
-                    <select
-                        ref={dayOfWeekRef}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        required
-                        disabled={loading}
-                    >
-                        <option value="">Pilih Hari</option>
-                        {DAYS_OF_WEEK.map((day) => (
-                            <option key={day.value} value={day.value}>
-                                {day.label}
-                            </option>
-                        ))}
-                    </select>
                 </div>
             </div>
         </Modal>

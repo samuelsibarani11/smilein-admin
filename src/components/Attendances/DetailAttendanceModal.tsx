@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from '../../components/Modal';
 import { AttendanceWithScheduleRead } from '../../types/attendance';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 interface AttendanceDetailModalProps {
     isOpen: boolean;
@@ -24,10 +24,15 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
         }
     };
 
-    // Format time
+    // Format time with proper datetime formatting
     const formatTime = (timeString: string | null) => {
         if (!timeString) return '-';
-        return timeString;
+        try {
+            // Parse ISO timestamp and format it as dd/MM/yyyy HH:mm:ss
+            return format(parseISO(timeString), 'dd/MM/yyyy HH:mm:ss');
+        } catch (error) {
+            return timeString;
+        }
     };
 
     // Format datetime
