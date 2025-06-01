@@ -15,6 +15,7 @@ interface Schedule {
     name: string;
   };
   day_of_week: number;
+  schedule_date: string;
   start_time: string;
   end_time: string;
   instructor: {
@@ -35,17 +36,43 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
 }) => {
   const [students, setStudents] = useState<StudentRead[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filteringSchedules, setFilteringSchedules] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<number | ''>('');
   const [selectedSchedule, setSelectedSchedule] = useState<number | ''>('');
   const [validating, setValidating] = useState(false);
+
+  // Get current date in YYYY-MM-DD format
+  const getCurrentDate = (): string => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
 
   // Load students and schedules when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchData();
+      // Reset form when modal opens
+      setSelectedStudent('');
+      setSelectedSchedule('');
+      setFilteredSchedules([]);
     }
   }, [isOpen]);
+
+  // Filter schedules when schedules data changes or when selectedStudent changes
+  useEffect(() => {
+    const currentDate = getCurrentDate();
+    const todaySchedules = schedules.filter(schedule => schedule.schedule_date === currentDate);
+
+    if (selectedStudent && todaySchedules.length > 0) {
+      // If a student is selected, filter out schedules that already have attendance records
+      filterSchedulesWithExistingAttendance(todaySchedules, Number(selectedStudent));
+    } else {
+      // If no student selected or no schedules, just show today's schedules
+      setFilteredSchedules(todaySchedules);
+    }
+  }, [schedules, selectedStudent]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -71,6 +98,30 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
     }
   };
 
+  // Filter schedules that don't have existing attendance records for the selected student
+  const filterSchedulesWithExistingAttendance = async (schedulesToFilter: Schedule[], studentId: number) => {
+    setFilteringSchedules(true);
+    try {
+      const availableSchedules: Schedule[] = [];
+
+      // Check each schedule to see if attendance already exists
+      for (const schedule of schedulesToFilter) {
+        const exists = await checkAttendanceExists(studentId, schedule.schedule_id);
+        if (!exists) {
+          availableSchedules.push(schedule);
+        }
+      }
+
+      setFilteredSchedules(availableSchedules);
+    } catch (error) {
+      console.error('Error filtering schedules:', error);
+      // On error, show all schedules for the current date
+      setFilteredSchedules(schedulesToFilter);
+    } finally {
+      setFilteringSchedules(false);
+    }
+  };
+
   // Check if attendance record already exists
   const checkAttendanceExists = async (studentId: number, scheduleId: number): Promise<boolean> => {
     try {
@@ -87,6 +138,12 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
       console.error('Error checking attendance existence:', error);
       return false;
     }
+  };
+
+  const handleStudentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const studentId = Number(e.target.value) || '';
+    setSelectedStudent(studentId);
+    setSelectedSchedule(''); // Reset schedule selection when student changes
   };
 
   const handleSubmit = async () => {
@@ -114,7 +171,7 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
 
     setValidating(true);
     try {
-      // Check if the attendance record already exists
+      // Double check if the attendance record already exists before creating
       const exists = await checkAttendanceExists(Number(selectedStudent), Number(selectedSchedule));
 
       if (exists) {
@@ -168,10 +225,25 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
     const roomName = schedule.room?.name || '';
     const startTime = schedule.start_time || '';
     const endTime = schedule.end_time || '';
-    
+
     // Only include the time information, removing day references
     return `${courseName}, ${startTime}-${endTime} (${roomName})`;
   };
+
+  // Format date for display
+  const formatDate = (dateString: string): string => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    return new Date(dateString).toLocaleDateString('id-ID', options);
+  };
+
+  const currentDate = getCurrentDate();
+  const currentDateFormatted = formatDate(currentDate);
+  const todaySchedulesCount = schedules.filter(s => s.schedule_date === currentDate).length;
 
   return (
     <Modal
@@ -187,13 +259,23 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
+          {/* Info about current date */}
+          <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border-l-4 border-green-400">
+            <p className="text-sm text-green-700 dark:text-green-300">
+              <span className="font-semibold">Tanggal hari ini:</span> {currentDateFormatted}
+            </p>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              Hanya jadwal untuk tanggal hari ini yang ditampilkan
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Mahasiswa
             </label>
             <select
               value={selectedStudent}
-              onChange={(e) => setSelectedStudent(Number(e.target.value) || '')}
+              onChange={handleStudentChange}
               className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
               disabled={validating}
             >
@@ -208,21 +290,54 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Jadwal
+              Jadwal (Hari Ini)
             </label>
             <select
               value={selectedSchedule}
               onChange={(e) => setSelectedSchedule(Number(e.target.value) || '')}
               className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-              disabled={validating}
+              disabled={validating || filteringSchedules || !selectedStudent}
             >
-              <option value="">Pilih Jadwal</option>
-              {schedules.map((schedule) => (
+              <option value="">
+                {filteringSchedules
+                  ? 'Memuat jadwal...'
+                  : !selectedStudent
+                    ? 'Pilih mahasiswa terlebih dahulu'
+                    : 'Pilih Jadwal'
+                }
+              </option>
+              {!filteringSchedules && selectedStudent && filteredSchedules.map((schedule) => (
                 <option key={schedule.schedule_id} value={schedule.schedule_id}>
                   {formatScheduleOption(schedule)}
                 </option>
               ))}
             </select>
+
+            {/* Helper messages */}
+            {!selectedStudent && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Pilih mahasiswa untuk melihat jadwal yang tersedia
+              </p>
+            )}
+
+            {selectedStudent && !filteringSchedules && filteredSchedules.length === 0 && todaySchedulesCount === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Tidak ada jadwal yang tersedia untuk tanggal {currentDate}
+              </p>
+            )}
+
+            {selectedStudent && !filteringSchedules && filteredSchedules.length === 0 && todaySchedulesCount > 0 && (
+              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                Semua jadwal hari ini sudah memiliki data kehadiran untuk mahasiswa ini
+              </p>
+            )}
+
+            {filteringSchedules && (
+              <p className="text-sm text-blue-500 dark:text-blue-400 mt-1">
+                <span className="inline-block animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-500 mr-2"></span>
+                Memeriksa jadwal yang tersedia...
+              </p>
+            )}
           </div>
 
           {selectedStudent && selectedSchedule && (
@@ -237,15 +352,18 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
                 </li>
                 <li>
                   <span className="font-semibold">Mata Kuliah:</span>{' '}
-                  {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.course.course_name || ''}
+                  {filteredSchedules.find(s => s.schedule_id === Number(selectedSchedule))?.course.course_name || ''}
                 </li>
                 <li>
                   <span className="font-semibold">Pengajar:</span>{' '}
-                  {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.instructor.full_name || ''}
+                  {filteredSchedules.find(s => s.schedule_id === Number(selectedSchedule))?.instructor.full_name || ''}
                 </li>
                 <li>
                   <span className="font-semibold">Waktu:</span>{' '}
-                  {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.start_time || ''} - {schedules.find(s => s.schedule_id === Number(selectedSchedule))?.end_time || ''}
+                  {filteredSchedules.find(s => s.schedule_id === Number(selectedSchedule))?.start_time || ''} - {filteredSchedules.find(s => s.schedule_id === Number(selectedSchedule))?.end_time || ''}
+                </li>
+                <li>
+                  <span className="font-semibold">Tanggal:</span> {formatDate(currentDate)}
                 </li>
               </ul>
             </div>

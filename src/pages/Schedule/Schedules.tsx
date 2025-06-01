@@ -106,7 +106,7 @@ const Schedules: React.FC = () => {
             console.error('Failed to delete schedule:', error);
             let errorMessage = 'Gagal menghapus jadwal.';
             if (error instanceof Error) {
-                errorMessage = `Gagal menghapus jadwal: ${error.message}`;
+                errorMessage = `Gagal menghapus jadwal sedang digunakan`;
             }
             showAlert('Error!', errorMessage, 'error');
         } finally {
