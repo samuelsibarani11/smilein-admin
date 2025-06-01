@@ -45,7 +45,7 @@ const DynamicTable = ({
     itemsPerPage = 10,
     searchable = true,
     filterable = true,
-    disableBuiltInFilter = false, // Default to false to maintain backward compatibility
+    disableBuiltInFilter = false, 
     searchFields
 }: PaginatedTableProps) => {
     const [currentPage, setCurrentPage] = useState(1);

@@ -116,7 +116,13 @@ const AttendanceHistory: React.FC = () => {
             const response = await getAttendances();
             // Handle null, undefined or non-array responses gracefully
             if (response && Array.isArray(response)) {
-                setAttendances(response);
+                // Sort attendances by date in descending order (newest first)
+                const sortedAttendances = response.sort((a, b) => {
+                    const dateA = new Date(a.schedule?.schedule_date || a.date || '');
+                    const dateB = new Date(b.schedule?.schedule_date || b.date || '');
+                    return dateB.getTime() - dateA.getTime();
+                });
+                setAttendances(sortedAttendances);
             } else {
                 // If response is not as expected, set empty array
                 setAttendances([]);
@@ -177,7 +183,7 @@ const AttendanceHistory: React.FC = () => {
         }
 
         // Then apply the user-selected filters
-        return roleFilteredAttendances.filter(attendance => {
+        const filtered = roleFilteredAttendances.filter(attendance => {
             const matchesDate = !selectedDate || attendance.date === selectedDate;
             const matchesCourse = !selectedCourse ||
                 (attendance.schedule?.course?.course_name === selectedCourse);
@@ -190,6 +196,13 @@ const AttendanceHistory: React.FC = () => {
                 (attendance.student?.full_name && attendance.student.full_name.toLowerCase().includes(searchName.toLowerCase()));
 
             return matchesDate && matchesCourse && matchesStatus && matchesNim && matchesName;
+        });
+
+        // Sort filtered results by date in descending order (newest first)
+        return filtered.sort((a, b) => {
+            const dateA = new Date(a.schedule?.schedule_date || a.date || '');
+            const dateB = new Date(b.schedule?.schedule_date || b.date || '');
+            return dateB.getTime() - dateA.getTime();
         });
     }, [attendances, selectedDate, selectedCourse, selectedStatus, searchNim, searchName, instructorCourses, isAdmin]);
 
@@ -252,8 +265,18 @@ const AttendanceHistory: React.FC = () => {
 
     const handleUpdateAttendance = async (attendanceId: number, attendanceData: AttendanceUpdate): Promise<void> => {
         try {
-            await updateAttendance(attendanceId, attendanceData);
-            await fetchAttendances(); // Refresh data after update
+            const updatedAttendance = await updateAttendance(attendanceId, attendanceData);
+
+            // Update attendance and re-sort the entire array
+            const updatedAttendances = attendances.map(a =>
+                a.attendance_id === attendanceId ? updatedAttendance : a
+            ).sort((a, b) => {
+                const dateA = new Date(a.schedule?.schedule_date || a.date || '');
+                const dateB = new Date(b.schedule?.schedule_date || b.date || '');
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            setAttendances(updatedAttendances);
 
             // Show success alert
             await Swal.fire({
@@ -273,6 +296,11 @@ const AttendanceHistory: React.FC = () => {
                 confirmButtonColor: '#3B82F6'
             });
         }
+    };
+
+    const handleCreateAttendanceSuccess = async () => {
+        // Refresh data after creating new attendance
+        await fetchAttendances();
     };
 
     // Format date as day/month/year
@@ -576,7 +604,7 @@ const AttendanceHistory: React.FC = () => {
                 <CreateAttendanceModal
                     isOpen={isCreateModalOpen}
                     onClose={() => setIsCreateModalOpen(false)}
-                    onSuccess={fetchAttendances}
+                    onSuccess={handleCreateAttendanceSuccess}
                     instructorId={instructorId || undefined}
                     instructorCourses={instructorCourses}
                 />

@@ -17,7 +17,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }: AddStudentModalProps) =
   const [formData, setFormData] = useState<StudentCreate>({
     username: '',
     full_name: '',
-    major_name: defaultMajor, // Set the default major
+    major_name: defaultMajor, 
     nim: '',
     year: defaultYear,
     password: '',
