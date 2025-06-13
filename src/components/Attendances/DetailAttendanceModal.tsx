@@ -86,7 +86,7 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
         const filename = imagePath.split('/').pop();
 
         // Backend URL - change this to your environment variable if available
-        const BACKEND_URL = 'http://localhost:8000';
+        const BACKEND_URL = 'https://web-production-f9b4.up.railway.app';
 
         // Return the complete path to the attendance images folder with backend URL
         return `${BACKEND_URL}/uploads/attendance_images/${filename}`;

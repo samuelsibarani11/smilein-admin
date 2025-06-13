@@ -68,7 +68,7 @@ const StudentList = () => {
     const formatImageUrl = (url: string | null) => {
         if (!url) return null;
         if (url.startsWith('data:')) return url;
-        if (url.startsWith('/')) return `http://localhost:8000${url}`;
+        if (url.startsWith('/')) return `https://web-production-f9b4.up.railway.app${url}`;
         return url;
     };
 
