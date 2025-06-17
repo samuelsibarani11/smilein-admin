@@ -46,9 +46,10 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
   // Get current date in YYYY-MM-DD format
   const getCurrentDate = (): string => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta'
+    }).format(today);
   };
-
   // Load students and schedules when modal opens
   useEffect(() => {
     if (isOpen) {
