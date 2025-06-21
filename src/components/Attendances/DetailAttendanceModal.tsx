@@ -71,7 +71,45 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
         }
     };
 
+    // Helper function to extract face verification data
+    const getFaceVerificationDetails = (faceData: Record<string, any> | null) => {
+        if (!faceData || typeof faceData !== 'object') {
+            return {
+                verified: '-',
+                confidence: '-',
+                predictedName: '-',
+                timestamp: '-'
+            };
+        }
+
+        return {
+            verified: faceData.verified !== undefined ? (faceData.verified ? 'Ya' : 'Tidak') : '-',
+            confidence: faceData.confidence ? `${(faceData.confidence * 100).toFixed(2)}%` : '-',
+            predictedName: faceData.predicted_name || '-',
+            timestamp: faceData.timestamp ? formatDateTime(faceData.timestamp) : '-'
+        };
+    };
+
+    // Helper function to extract location data
+    const getLocationDetails = (locationData: Record<string, any> | null) => {
+        if (!locationData || typeof locationData !== 'object') {
+            return {
+                latitude: '-',
+                longitude: '-',
+                timestamp: '-'
+            };
+        }
+
+        return {
+            latitude: locationData.latitude ? locationData.latitude.toFixed(8) : '-',
+            longitude: locationData.longitude ? locationData.longitude.toFixed(7) : '-',
+            timestamp: locationData.timestamp ? formatDateTime(locationData.timestamp) : '-'
+        };
+    };
+
     const status = getStatusDisplay(attendance.status);
+    const faceDetails = getFaceVerificationDetails(attendance.face_verification_data);
+    const locationDetails = getLocationDetails(attendance.location_data);
 
     // Generate full image URL with backend URL
     const getFullImageUrl = (imagePath: string | null): string => {
@@ -200,6 +238,7 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                     </div>
                 )}
 
+                {/* Face Verification Section */}
                 {attendance.face_verification_data && (
                     <div>
                         <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Verifikasi Wajah</h3>
@@ -207,9 +246,7 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Status Verifikasi</p>
-                                    <p className="font-medium dark:text-gray-100">
-                                        {attendance.face_verification_data ? 'Terverifikasi' : 'Tidak Terverifikasi'}
-                                    </p>
+                                    <p className="font-medium dark:text-gray-100">{faceDetails.verified}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Senyum Terdeteksi</p>
@@ -217,28 +254,42 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                                         {attendance.smile_detected ? 'Ya' : 'Tidak'}
                                     </p>
                                 </div>
-                            </div>
-                            {typeof attendance.face_verification_data === 'object' && (
-                                <div className="mt-4">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Detail Verifikasi</p>
-                                    <pre className="mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-md text-xs overflow-auto">
-                                        {JSON.stringify(attendance.face_verification_data, null, 2)}
-                                    </pre>
+                                <div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Tingkat Kepercayaan</p>
+                                    <p className="font-medium dark:text-gray-100">{faceDetails.confidence}</p>
                                 </div>
-                            )}
+                                <div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Nama Prediksi</p>
+                                    <p className="font-medium dark:text-gray-100">{faceDetails.predictedName}</p>
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Waktu Verifikasi</p>
+                                    <p className="font-medium dark:text-gray-100">{faceDetails.timestamp}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
+                {/* Location Data Section */}
                 {attendance.location_data && (
                     <div>
                         <h3 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">Data Lokasi</h3>
                         <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
-                            {typeof attendance.location_data === 'object' && (
-                                <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded-md text-xs overflow-auto">
-                                    {JSON.stringify(attendance.location_data, null, 2)}
-                                </pre>
-                            )}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Latitude</p>
+                                    <p className="font-medium dark:text-gray-100">{locationDetails.latitude}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Longitude</p>
+                                    <p className="font-medium dark:text-gray-100">{locationDetails.longitude}</p>
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Waktu Pencatatan Lokasi</p>
+                                    <p className="font-medium dark:text-gray-100">{locationDetails.timestamp}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

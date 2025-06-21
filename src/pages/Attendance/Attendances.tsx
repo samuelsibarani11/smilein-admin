@@ -42,7 +42,18 @@ const AttendanceHistory: React.FC = () => {
     const [attendances, setAttendances] = useState<AttendanceWithScheduleRead[]>([]);
     const [instructorCourses, setInstructorCourses] = useState<InstructorCourse[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [selectedDate, setSelectedDate] = useState('');
+
+    // Get today's date in YYYY-MM-DD format
+    const getTodayDate = (): string => {
+        const today = new Date();
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta'
+        }).format(today);
+    };
+
+
+    // Filter states - set default date to today
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
     const [searchNim, setSearchNim] = useState('');
@@ -444,14 +455,7 @@ const AttendanceHistory: React.FC = () => {
             );
         }
 
-        // No attendance data matches filters
-        if (filteredAttendances.length === 0) {
-            return (
-                <div className="text-center py-8">
-                    <p className="text-gray-600 dark:text-gray-300">Tidak ada data kehadiran yang sesuai dengan filter yang dipilih.</p>
-                </div>
-            );
-        }
+
 
         // We have data to display
         return (
@@ -492,15 +496,17 @@ const AttendanceHistory: React.FC = () => {
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Riwayat Kehadiran</h2>
-                {/* Only show Add Attendance button if user is admin */}
-                {isAdmin && (
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                    >
-                        Tambah Kehadiran
-                    </button>
-                )}
+                <div className="flex space-x-2">
+                    {/* Only show Add Attendance button if user is admin */}
+                    {isAdmin && (
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                            Tambah Kehadiran
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -514,6 +520,9 @@ const AttendanceHistory: React.FC = () => {
                         onChange={(e) => setSelectedDate(e.target.value)}
                         className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 outline-none focus:border-primary shadow-sm"
                     />
+                    <small className="text-xs text-gray-500 dark:text-gray-400">
+                        Default: Hari ini ({formatDate(getTodayDate())})
+                    </small>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">

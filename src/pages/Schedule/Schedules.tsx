@@ -6,14 +6,23 @@ import { ScheduleRead, ScheduleCreate, ScheduleUpdate } from '../../types/schedu
 import Swal from 'sweetalert2';
 import CreateScheduleModal from '../../components/Schedule/CreateScheduleModal';
 import UpdateScheduleModal from '../../components/Schedule/UpdateScheduleModal';
+import { format } from 'date-fns';
 
 const Schedules: React.FC = () => {
     const [schedules, setSchedules] = useState<ScheduleRead[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Filter states
-    const [selectedDate, setSelectedDate] = useState('');
+    // Get today's date in YYYY-MM-DD format
+    const getTodayDate = (): string => {
+        const today = new Date();
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta'
+        }).format(today);
+    };
+
+    // Filter states - set default date to today
+    const [selectedDate, setSelectedDate] = useState(getTodayDate());
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedInstructor, setSelectedInstructor] = useState('');
     const [selectedRoom, setSelectedRoom] = useState('');
@@ -193,20 +202,20 @@ const Schedules: React.FC = () => {
             if (error instanceof Error) {
                 errorMessage = `Gagal menghapus jadwal sedang digunakan`;
             }
-            showAlert('Error!', errorMessage, 'error');
+            showAlert('Error', errorMessage, 'error');
         } finally {
             setLoading(false);
         }
     };
 
     // Function to format date for display
-    const formatDate = (dateString: string): string => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
+        try {
+            return format(new Date(dateString), 'dd/MM/yyyy');
+        } catch (error) {
+            return dateString;
+        }
     };
 
     const scheduleColumns: Column[] = [
@@ -282,14 +291,20 @@ const Schedules: React.FC = () => {
             return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
         }
 
-        // No schedule data matches filters
-        if (filteredSchedules.length === 0) {
-            return (
-                <div className="text-center py-8">
-                    <p className="text-gray-600 dark:text-gray-300">Tidak ada data jadwal yang sesuai dengan filter yang dipilih.</p>
-                </div>
-            );
-        }
+        // // No schedule data matches filters
+        // if (filteredSchedules.length === 0) {
+        //     return (
+        //         <div className="text-center py-8">
+        //             <p className="text-gray-600 dark:text-gray-300">Tidak ada data jadwal yang sesuai dengan filter yang dipilih.</p>
+        //             <button
+        //                 onClick={resetFilters}
+        //                 className="mt-2 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+        //             >
+        //                 Reset Filter
+        //             </button>
+        //         </div>
+        //     );
+        // }
 
         // We have data to display
         return (
@@ -324,12 +339,14 @@ const Schedules: React.FC = () => {
         <div className="space-y-8 p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Daftar Jadwal</h2>
-                <button
-                    onClick={() => setCreateModalOpen(true)}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                >
-                    Tambah Jadwal
-                </button>
+                <div className="flex space-x-2">
+                    <button
+                        onClick={() => setCreateModalOpen(true)}
+                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                    >
+                        Tambah Jadwal
+                    </button>
+                </div>
             </div>
 
             {/* Custom Filters */}
@@ -344,6 +361,9 @@ const Schedules: React.FC = () => {
                         onChange={(e) => setSelectedDate(e.target.value)}
                         className="w-full rounded-lg border border-stroke bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 px-4 py-2 outline-none focus:border-primary shadow-sm"
                     />
+                    <small className="text-xs text-gray-500 dark:text-gray-400">
+                        Default: Hari ini ({formatDate(getTodayDate())})
+                    </small>
                 </div>
 
                 <div>
