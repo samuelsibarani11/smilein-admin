@@ -342,7 +342,7 @@ const Schedules: React.FC = () => {
                 <div className="flex space-x-2">
                     <button
                         onClick={() => setCreateModalOpen(true)}
-                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm flex items-center transition-colors duration-200 dark:bg-green-600 dark:hover:bg-green-700"
                     >
                         Tambah Jadwal
                     </button>

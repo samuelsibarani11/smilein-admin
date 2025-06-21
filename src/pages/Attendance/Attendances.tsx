@@ -238,6 +238,7 @@ const AttendanceHistory: React.FC = () => {
             cancelButtonColor: '#3B82F6',
             confirmButtonText: 'Ya, hapus!',
             cancelButtonText: 'Batal'
+
         });
 
         // Jika pengguna membatalkan, tidak melakukan apa-apa
@@ -501,7 +502,7 @@ const AttendanceHistory: React.FC = () => {
                     {isAdmin && (
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                            className="px-3 py-2 bg-green-500 text-white rounded-lg  hover:bg-green-600 text-sm flex items-center transition-colors duration-200 dark:bg-green-600 dark:hover:bg-green-700"
                         >
                             Tambah Kehadiran
                         </button>

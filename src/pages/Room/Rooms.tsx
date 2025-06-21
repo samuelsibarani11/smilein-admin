@@ -267,7 +267,8 @@ const RoomList: React.FC = () => {
                 <h2 className="text-xl font-semibold">Daftar Ruangan</h2>
                 <button
                     onClick={handleCreateClick}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm flex items-center transition-colors duration-200 dark:bg-green-600 dark:hover:bg-green-700"
+
                 >
                     Tambah Ruangan
                 </button>
