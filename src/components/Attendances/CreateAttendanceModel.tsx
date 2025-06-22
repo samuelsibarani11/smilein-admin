@@ -48,12 +48,39 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
   const [selectedSchedule, setSelectedSchedule] = useState<number | ''>('');
   const [validating, setValidating] = useState(false);
 
-  // Get current date in YYYY-MM-DD format
+  // Get current date in YYYY-MM-DD format (WIB timezone)
   const getCurrentDate = (): string => {
     const today = new Date();
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Jakarta'
     }).format(today);
+  };
+
+  // Get current time in HH:mm format (WIB timezone)
+  const getCurrentTime = (): string => {
+    const now = new Date();
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(now);
+  };
+
+  // Check if schedule end time has passed
+  const isScheduleActive = (endTime: string): boolean => {
+    const currentTime = getCurrentTime();
+
+    // Convert times to comparable format (remove seconds if present)
+    const normalizeTime = (time: string): string => {
+      return time.substring(0, 5); // Get HH:mm part only
+    };
+
+    const normalizedCurrentTime = normalizeTime(currentTime);
+    const normalizedEndTime = normalizeTime(endTime);
+
+    // Compare times as strings (works for HH:mm format)
+    return normalizedEndTime > normalizedCurrentTime;
   };
 
   // Load students and schedules when modal opens
@@ -73,7 +100,16 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
   // Filter schedules when schedules data changes
   useEffect(() => {
     const currentDate = getCurrentDate();
-    const todaySchedules = schedules.filter(schedule => schedule.schedule_date === currentDate);
+    const todaySchedules = schedules.filter(schedule => {
+      // Check if schedule is for today
+      const isToday = schedule.schedule_date === currentDate;
+
+      // Check if schedule end time hasn't passed yet
+      const isActive = isScheduleActive(schedule.end_time);
+
+      return isToday && isActive;
+    });
+
     setFilteredSchedules(todaySchedules);
   }, [schedules]);
 
@@ -226,7 +262,6 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
       cancelButtonColor: '#9CA3AF',
     });
 
-
     if (!confirmResult.isConfirmed) return;
 
     setValidating(true);
@@ -309,8 +344,28 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
     return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
+  const formatCurrentDateTime = (): string => {
+    const now = new Date();
+    const date = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(now);
+
+    const time = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(now);
+
+    return `${date}, ${time} WIB`;
+  };
+
   const currentDate = getCurrentDate();
-  const currentDateFormatted = formatDate(currentDate);
+  const currentDateTime = formatCurrentDateTime();
 
   return (
     <Modal
@@ -327,20 +382,20 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
-          {/* Info about current date */}
+          {/* Info about current date and time */}
           <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border-l-4 border-green-400">
             <p className="text-sm text-green-700 dark:text-green-300">
-              <span className="font-semibold">Tanggal hari ini:</span> {currentDateFormatted}
+              <span className="font-semibold">Waktu saat ini:</span> {currentDateTime}
             </p>
             <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-              Hanya jadwal untuk tanggal hari ini yang ditampilkan
+              Hanya jadwal untuk hari ini yang belum berakhir yang ditampilkan
             </p>
           </div>
 
           {/* Schedule Selection */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Pilih Jadwal (Hari Ini)
+              Pilih Jadwal (Hari Ini - Aktif)
             </label>
             <select
               value={selectedSchedule}
@@ -357,7 +412,7 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
             </select>
             {filteredSchedules.length === 0 && !loading && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Tidak ada jadwal untuk hari ini
+                Tidak ada jadwal aktif untuk hari ini (semua jadwal mungkin sudah berakhir)
               </p>
             )}
           </div>
