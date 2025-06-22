@@ -9,8 +9,6 @@ import Settings from './pages/Settings';
 import DefaultLayout from './layout/DefaultLayout';
 import StudentList from './pages/User/StudentList';
 import AttendanceHistory from './pages/Attendance/Attendances';
-import SystemSettings from './pages/Settings/SystemSettings';
-import LocationSettings from './pages/Settings/LocationSettings';
 import 'sweetalert2/dist/sweetalert2.css';
 import StudentDetail from './pages/User/StudentDetail';
 import CourseList from './pages/Academic/CourseList';
