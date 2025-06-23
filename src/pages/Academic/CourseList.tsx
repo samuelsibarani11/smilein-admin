@@ -257,7 +257,8 @@ const CourseList: React.FC = () => {
                 <h2 className="text-xl font-semibold">Daftar Mata Kuliah</h2>
                 <button
                     onClick={handleCreateClick}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                    className="px-3 py-2 bg-green-500 text-white rounded-lg  hover:bg-green-600 text-sm flex items-center transition-colors duration-200 dark:bg-green-600 dark:hover:bg-green-700"
+
                 >
                     Tambah Mata Kuliah
                 </button>

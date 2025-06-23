@@ -18,7 +18,7 @@ const InstructorList = () => {
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [statusFilter] = useState<string>('all');
 
     useEffect(() => {
         loadInstructors();
@@ -164,16 +164,7 @@ const InstructorList = () => {
                         />
                     </div>
 
-                    {/* Status Filter */}
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="p-2 w-32 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
+                   
 
                     {/* Add Button */}
                     <button

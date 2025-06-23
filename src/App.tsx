@@ -52,7 +52,7 @@ function App() {
         title: 'Session Expired',
         text: 'Your session has expired. Please sign in again.',
         confirmButtonText: 'Sign In',
-        confirmButtonColor: '#3085d6', 
+        confirmButtonColor: '#3085d6',
         allowOutsideClick: false,
       }).then(() => {
         localStorage.removeItem('token');
@@ -193,7 +193,7 @@ function App() {
                     </>
                   }
                 />
-                
+
                 <Route
                   path="/profile"
                   element={
