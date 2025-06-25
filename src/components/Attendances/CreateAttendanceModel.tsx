@@ -38,6 +38,9 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Add loading state for student filtering
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   // Multiple mode states
   const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
@@ -94,6 +97,7 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
       setStudentsWithoutAttendance([]);
       setSearchStudent('');
       setSelectAllChecked(false);
+      setLoadingStudents(false);
     }
   }, [isOpen]);
 
@@ -115,12 +119,13 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
 
   // Filter students without attendance when schedule is selected
   useEffect(() => {
-    if (selectedSchedule) {
+    if (selectedSchedule && students.length > 0) {
       filterStudentsWithoutAttendance();
     } else {
       setStudentsWithoutAttendance([]);
       setSelectedStudents(new Set());
       setSelectAllChecked(false);
+      setLoadingStudents(false);
     }
   }, [selectedSchedule, students]);
 
@@ -150,16 +155,32 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
 
   // Filter students who don't have attendance for the selected schedule
   const filterStudentsWithoutAttendance = async () => {
-    if (!selectedSchedule) return;
+    if (!selectedSchedule || students.length === 0) {
+      setLoadingStudents(false);
+      return;
+    }
 
+    setLoadingStudents(true);
     try {
       const availableStudents: StudentRead[] = [];
 
-      for (const student of students) {
-        const exists = await checkAttendanceExists(student.student_id, Number(selectedSchedule));
-        if (!exists) {
-          availableStudents.push(student);
-        }
+      // Process students in batches for better performance
+      const batchSize = 10;
+      for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (student) => {
+          const exists = await checkAttendanceExists(student.student_id, Number(selectedSchedule));
+          return { student, exists };
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Add students without attendance to the list
+        batchResults.forEach(({ student, exists }) => {
+          if (!exists) {
+            availableStudents.push(student);
+          }
+        });
       }
 
       setStudentsWithoutAttendance(availableStudents);
@@ -169,6 +190,8 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
     } catch (error) {
       console.error('Error filtering students:', error);
       setStudentsWithoutAttendance(students);
+    } finally {
+      setLoadingStudents(false);
     }
   };
 
@@ -373,7 +396,7 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
       onClose={onClose}
       title="Tambah Kehadiran Mahasiswa"
       onConfirm={handleSubmit}
-      confirmDisabled={validating}
+      confirmDisabled={validating || loadingStudents}
       size="large"
     >
       {loading ? (
@@ -424,65 +447,80 @@ const CreateAttendanceModal: React.FC<CreateAttendanceModalProps> = ({
                 Pilih Mahasiswa ({selectedStudents.size} dipilih)
               </label>
 
-              {/* Search Box */}
-              <input
-                type="text"
-                placeholder="Cari mahasiswa (nama atau NIM)..."
-                value={searchStudent}
-                onChange={(e) => setSearchStudent(e.target.value)}
-                className="w-full px-4 py-2 mb-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-              />
+              {/* Loading Students Indicator */}
+              {loadingStudents && (
+                <div className="flex justify-center items-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 mb-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">
+                    Memuat data mahasiswa...
+                  </span>
+                </div>
+              )}
 
-              {/* Select All Checkbox */}
-              <div className="mb-3">
-                <label className="flex items-center">
+              {/* Student Selection Interface - Only show when not loading */}
+              {!loadingStudents && (
+                <>
+                  {/* Search Box */}
                   <input
-                    type="checkbox"
-                    checked={selectAllChecked}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="mr-2"
+                    type="text"
+                    placeholder="Cari mahasiswa (nama atau NIM)..."
+                    value={searchStudent}
+                    onChange={(e) => setSearchStudent(e.target.value)}
+                    className="w-full px-4 py-2 mb-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
                   />
-                  <span className="text-sm font-medium">Pilih Semua ({getFilteredStudentsForSelection().length} mahasiswa)</span>
-                </label>
-              </div>
 
-              {/* Students List */}
-              <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700">
-                {getFilteredStudentsForSelection().length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    {studentsWithoutAttendance.length === 0
-                      ? 'Semua mahasiswa sudah memiliki data kehadiran untuk jadwal ini'
-                      : 'Tidak ada mahasiswa yang sesuai dengan pencarian'
-                    }
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {getFilteredStudentsForSelection().map((student) => (
-                      <label key={student.student_id} className="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedStudents.has(student.student_id)}
-                          onChange={(e) => handleStudentSelection(student.student_id, e.target.checked)}
-                          className="mr-3"
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {student.full_name}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            NIM: {student.nim}
-                          </div>
-                        </div>
-                      </label>
-                    ))}
+                  {/* Select All Checkbox */}
+                  <div className="mb-3">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectAllChecked}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm font-medium">Pilih Semua ({getFilteredStudentsForSelection().length} mahasiswa)</span>
+                    </label>
                   </div>
-                )}
-              </div>
+
+                  {/* Students List */}
+                  <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700">
+                    {getFilteredStudentsForSelection().length === 0 ? (
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">
+                        {studentsWithoutAttendance.length === 0
+                          ? 'Semua mahasiswa sudah memiliki data kehadiran untuk jadwal ini'
+                          : 'Tidak ada mahasiswa yang sesuai dengan pencarian'
+                        }
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {getFilteredStudentsForSelection().map((student) => (
+                          <label key={student.student_id} className="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.has(student.student_id)}
+                              onChange={(e) => handleStudentSelection(student.student_id, e.target.checked)}
+                              className="mr-3"
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {student.full_name}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                NIM: {student.nim}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {/* Summary */}
-          {selectedStudents.size > 0 && selectedSchedule && (
+          {selectedStudents.size > 0 && selectedSchedule && !loadingStudents && (
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-2">
                 Ringkasan Penambahan Kehadiran:
