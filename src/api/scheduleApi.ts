@@ -45,7 +45,7 @@ export const getSchedules = async (
   filters?: {
     course_id?: number | null;
     instructor_id?: number | null;
-    room_id?: number | null; // Updated to room_id instead of room
+    room_id?: number | null;
     day_of_week?: number | null;
   }
 ): Promise<ScheduleRead[]> => {

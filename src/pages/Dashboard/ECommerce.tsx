@@ -8,6 +8,7 @@ import { getCourses } from '../../api/courseApi';
 import { getSchedules } from '../../api/scheduleApi';
 import { CardSkeleton, ChartSkeleton, TableSkeleton } from '../../components/SkeletonLoading';
 import { jwtDecode } from 'jwt-decode';
+import { ScheduleRead } from '../../types/schedule';
 
 // Define the token structure
 interface DecodedToken {
@@ -21,10 +22,29 @@ const Dashboard: React.FC = () => {
   const [studentCount, setStudentCount] = useState<number>(0);
   const [instructorCount, setInstructorCount] = useState<number>(0);
   const [courseCount, setCourseCount] = useState<number>(0);
-  const [scheduleCount, setScheduleCount] = useState<number>(0);
+  const [todayScheduleCount, setTodayScheduleCount] = useState<number>(0); // Changed name to be more descriptive
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false); // Add state to track if user is admin
+
+  // Function to get today's date in YYYY-MM-DD format
+  const getTodayDate = (): string => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Function to filter schedules for today
+  const filterTodaySchedules = (schedules: ScheduleRead[]): ScheduleRead[] => {
+    const todayDate = getTodayDate();
+    return schedules.filter(schedule => {
+      // Extract date part from schedule_date (in case it includes time)
+      const scheduleDate = schedule.schedule_date.split('T')[0]; // This handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss" formats
+      return scheduleDate === todayDate;
+    });
+  };
 
   useEffect(() => {
     // Check user role from token when component mounts
@@ -64,17 +84,22 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      const [students, instructors, courses, activeSchedules] = await Promise.all([
+      const [students, instructors, courses, allSchedules] = await Promise.all([
         getStudents(0),
         getInstructors(0),
         getCourses(0),
-        getSchedules(0)
+        getSchedules(0) // Get all schedules first
       ]);
+
+      // Filter schedules for today only
+      const todaySchedules = filterTodaySchedules(allSchedules);
 
       setStudentCount(students.length);
       setInstructorCount(instructors.length);
       setCourseCount(courses.length);
-      setScheduleCount(activeSchedules.length);
+      setTodayScheduleCount(todaySchedules.length); // Set count for today's schedules only
+
+      console.log(`Total schedules: ${allSchedules.length}, Today's schedules: ${todaySchedules.length}`);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError('Failed to load dashboard data. Please try again later.');
@@ -153,10 +178,10 @@ const Dashboard: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-notebook-pen fill-primary dark:fill-white"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /><path d="M2 6h4" /><path d="M2 10h4" /><path d="M2 14h4" /><path d="M2 18h4" /><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></svg>
               </CardDataStats>
 
-              {/* Card Total Schedule */}
+              {/* Card Total Schedule for Today */}
               <CardDataStats
-                title="Total Jadwal Aktif"
-                total={scheduleCount.toLocaleString()}
+                title="Jadwal Hari Ini"
+                total={todayScheduleCount.toLocaleString()}
                 levelDown
               >
                 <svg
