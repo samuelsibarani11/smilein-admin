@@ -14,6 +14,19 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
     onClose,
     attendance
 }) => {
+    // Convert UTC time to WIB (UTC+7)
+    const convertToWIB = (dateString: string | null): Date | null => {
+        if (!dateString) return null;
+        try {
+            const utcDate = new Date(dateString);
+            // Add 7 hours for WIB timezone
+            const wibDate = new Date(utcDate.getTime() + (7 * 60 * 60 * 1000));
+            return wibDate;
+        } catch (error) {
+            return null;
+        }
+    };
+
     // Format date
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
@@ -24,7 +37,31 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
         }
     };
 
-    // Format time with proper datetime formatting
+    // Format time with WIB timezone conversion
+    const formatTimeWIB = (timeString: string | null) => {
+        if (!timeString) return '-';
+        try {
+            const wibDate = convertToWIB(timeString);
+            if (!wibDate) return timeString;
+            return format(wibDate, 'dd/MM/yyyy HH:mm:ss') + ' WIB';
+        } catch (error) {
+            return timeString;
+        }
+    };
+
+    // Format datetime with WIB timezone conversion
+    const formatDateTimeWIB = (dateTimeString: string | null) => {
+        if (!dateTimeString) return '-';
+        try {
+            const wibDate = convertToWIB(dateTimeString);
+            if (!wibDate) return dateTimeString;
+            return format(wibDate, 'dd/MM/yyyy HH:mm:ss') + ' WIB';
+        } catch (error) {
+            return dateTimeString;
+        }
+    };
+
+    // Format time with proper datetime formatting (for non-WIB times)
     const formatTime = (timeString: string | null) => {
         if (!timeString) return '-';
         try {
@@ -35,7 +72,7 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
         }
     };
 
-    // Format datetime
+    // Format datetime (for non-WIB times)
     const formatDateTime = (dateTimeString: string | null) => {
         if (!dateTimeString) return '-';
         try {
@@ -198,7 +235,7 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Check-in</p>
-                            <p className="font-medium dark:text-gray-100">{formatTime(attendance.check_in_time) || 'Tidak Check-in'}</p>
+                            <p className="font-medium dark:text-gray-100">{formatTimeWIB(attendance.check_in_time) || 'Tidak Check-in'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
@@ -210,11 +247,11 @@ const AttendanceDetailModal: React.FC<AttendanceDetailModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Dibuat pada</p>
-                            <p className="font-medium dark:text-gray-100">{formatDateTime(attendance.created_at)}</p>
+                            <p className="font-medium dark:text-gray-100">{formatDateTimeWIB(attendance.created_at)}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Diperbarui pada</p>
-                            <p className="font-medium dark:text-gray-100">{formatDateTime(attendance.updated_at) || '-'}</p>
+                            <p className="font-medium dark:text-gray-100">{formatDateTimeWIB(attendance.updated_at) || '-'}</p>
                         </div>
                     </div>
                 </div>

@@ -20,7 +20,6 @@ export interface ScheduleRead {
     radius: number;
   };
   chapter?: string;
-  // day_of_week field removed
   start_time: string;
   end_time: string;
   schedule_date: string;
