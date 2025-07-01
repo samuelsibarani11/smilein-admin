@@ -35,8 +35,45 @@ interface InstructorCourse {
     course: {
         course_name: string;
         sks: number;
-    };
+    } | null; // Allow null for course property
 }
+
+// Define InstructorCourseRead type to match API response
+interface InstructorCourseRead {
+    instructor_id: number;
+    course_id: number;
+    instructor_course_id: number;
+    created_at: string;
+    instructor: {
+        nidn: string;
+        full_name: string;
+        username: string;
+        email: string;
+        phone_number: string;
+        profile_picture_url: string;
+    };
+    course: {
+        course_id: number;
+        course_name: string;
+        sks: number;
+        created_at: string;
+    } | null;
+}
+
+// Helper function to convert InstructorCourseRead to InstructorCourse
+const convertToInstructorCourse = (apiData: InstructorCourseRead): InstructorCourse => {
+    return {
+        instructor_id: apiData.instructor_id,
+        course_id: apiData.course_id,
+        instructor_course_id: apiData.instructor_course_id,
+        created_at: apiData.created_at,
+        instructor: apiData.instructor,
+        course: apiData.course ? {
+            course_name: apiData.course.course_name,
+            sks: apiData.course.sks
+        } : null
+    };
+};
 
 const AttendanceHistory: React.FC = () => {
     const [attendances, setAttendances] = useState<AttendanceWithScheduleRead[]>([]);
@@ -50,7 +87,6 @@ const AttendanceHistory: React.FC = () => {
             timeZone: 'Asia/Jakarta'
         }).format(today);
     };
-
 
     // Filter states - set default date to today
     const [selectedDate, setSelectedDate] = useState(getTodayDate());
@@ -88,7 +124,10 @@ const AttendanceHistory: React.FC = () => {
 
                             // Handle the response properly - wrap in array if it's a single object
                             if (course) {
-                                setInstructorCourses(Array.isArray(course) ? course : [course]);
+                                const coursesArray = Array.isArray(course) ? course : [course];
+                                // Convert API response to our local type
+                                const convertedCourses = coursesArray.map(convertToInstructorCourse);
+                                setInstructorCourses(convertedCourses);
                             } else {
                                 setInstructorCourses([]);
                             }
@@ -277,12 +316,26 @@ const AttendanceHistory: React.FC = () => {
 
     const handleUpdateAttendance = async (attendanceId: number, attendanceData: AttendanceUpdate): Promise<void> => {
         try {
-            const updatedAttendance = await updateAttendance(attendanceId, attendanceData);
+            // Update attendance via API
+            await updateAttendance(attendanceId, attendanceData);
 
-            // Update attendance and re-sort the entire array
-            const updatedAttendances = attendances.map(a =>
-                a.attendance_id === attendanceId ? updatedAttendance : a
-            ).sort((a, b) => {
+            // Instead of using the API response, update only the specific fields in the existing data
+            // This preserves all the relational data (schedule, student, etc.)
+            const updatedAttendances = attendances.map(attendance => {
+                if (attendance.attendance_id === attendanceId) {
+                    // Only update the fields that were actually changed
+                    return {
+                        ...attendance, // Keep all existing data
+                        ...attendanceData, // Only override the updated fields
+                        attendance_id: attendance.attendance_id,
+                        schedule: attendance.schedule,
+                        student: attendance.student,
+                        // Ensure status is not null
+                        status: attendanceData.status || attendance.status || 'ABSENT'
+                    };
+                }
+                return attendance;
+            }).sort((a, b) => {
                 const dateA = new Date(a.schedule?.schedule_date || a.date || '');
                 const dateB = new Date(b.schedule?.schedule_date || b.date || '');
                 return dateB.getTime() - dateA.getTime();
@@ -392,11 +445,15 @@ const AttendanceHistory: React.FC = () => {
             header: 'Tanggal',
             accessor: 'date',
             minWidth: '120px',
-            cell: (item: AttendanceWithScheduleRead) => (
-                <span>
-                    {formatDate(item.schedule.schedule_date)}
-                </span>
-            )
+            cell: (item: AttendanceWithScheduleRead) => {
+                // Check multiple possible date sources and handle undefined/null values
+                const dateToFormat = item.schedule?.schedule_date || item.date;
+                return (
+                    <span>
+                        {dateToFormat ? formatDate(dateToFormat) : '-'}
+                    </span>
+                );
+            }
         },
         {
             header: 'Check-in',
@@ -455,8 +512,6 @@ const AttendanceHistory: React.FC = () => {
                 </div>
             );
         }
-
-
 
         // We have data to display
         return (
@@ -615,8 +670,6 @@ const AttendanceHistory: React.FC = () => {
                     isOpen={isCreateModalOpen}
                     onClose={() => setIsCreateModalOpen(false)}
                     onSuccess={handleCreateAttendanceSuccess}
-                    instructorId={instructorId || undefined}
-                    instructorCourses={instructorCourses}
                 />
             )}
 

@@ -20,7 +20,6 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
 }) => {
     const statusRef = useRef<HTMLSelectElement>(null);
     const checkInTimeRef = useRef<HTMLInputElement>(null);
-    const checkOutTimeRef = useRef<HTMLInputElement>(null);
 
     const showAlert = (title: string, message: string, icon: 'success' | 'error' | 'warning'): void => {
         Swal.fire({
@@ -43,7 +42,6 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
 
         const status = statusRef.current?.value;
         const checkInTime = checkInTimeRef.current?.value;
-        const checkOutTime = checkOutTimeRef.current?.value;
 
         const updateData: AttendanceUpdate = {};
 
@@ -53,10 +51,6 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
         
         if (checkInTime && checkInTime !== currentAttendance.check_in_time) {
             updateData.check_in_time = checkInTime;
-        }
-        
-        if (checkOutTime && checkOutTime !== currentAttendance.check_out_time) {
-            updateData.check_out_time = checkOutTime;
         }
 
         if (Object.keys(updateData).length === 0) {
@@ -142,29 +136,16 @@ const UpdateAttendanceModal: React.FC<UpdateAttendanceModalProps> = ({
                         ))}
                     </select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Waktu Check-in
-                        </label>
-                        <input
-                            ref={checkInTimeRef}
-                            type="time"
-                            defaultValue={currentAttendance.check_in_time || ''}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Waktu Check-out
-                        </label>
-                        <input
-                            ref={checkOutTimeRef}
-                            type="time"
-                            defaultValue={currentAttendance.check_out_time || ''}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
-                        />
-                    </div>
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Waktu Check-in
+                    </label>
+                    <input
+                        ref={checkInTimeRef}
+                        type="time"
+                        defaultValue={currentAttendance.check_in_time || ''}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100"
+                    />
                 </div>
             </div>
         </Modal>
